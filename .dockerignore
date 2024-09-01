@@ -1,0 +1,21 @@
+# Git
+.gitignore
+
+# Docker
+dockerfile
+.dockerignore
+
+# Byte-compiled / optimized / DLL files
+**/__pycache__/
+**/*.py[cod]
+
+# Virtual environment
+.env
+.venv/
+venv/
+
+# VS Code
+.vscode/
+
+# Antlr Extension for VS Code
+.antlr
