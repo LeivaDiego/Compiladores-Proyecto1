@@ -11,6 +11,3 @@
 ## Autores
 - Diego Leiva
 - Pablo Orellana
-
-## Docker Test
-![alt text](image.png)
