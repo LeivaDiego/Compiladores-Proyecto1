@@ -5,7 +5,7 @@ from Language.compiscriptLexer import compiscriptLexer
 from Language.compiscriptParser import compiscriptParser
 
 def main():
-    input_path = 'src/Input/suma_simple.compiscript' 
+    input_path = 'src/Input/suma_simple.cspt' 
 
     input_stream = FileStream(input_path)
 
