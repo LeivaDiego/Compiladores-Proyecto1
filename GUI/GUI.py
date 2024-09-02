@@ -9,6 +9,9 @@ root = tk.Tk()
 root.title("Compilador (Construcción de Compiladores CC3032) - Editor de Código")  
 root.geometry("1000x600") 
 
+# Variable global para almacenar la ruta del archivo abierto
+current_file_path = None
+
 # Definir colores para los temas
 dark_gray = "#2E2E2E"  # Color gris oscuro para el tema oscuro
 light_gray = "#F0F0F0"  # Color gris claro para el tema claro
@@ -26,6 +29,7 @@ def set_theme(theme):
         code_editor.config(bg="white", fg=light_text_color, insertbackground=light_text_color)
         terminal_frame.config(bg="white")
         run_button.config(bg="lightgray", fg=light_text_color)
+        save_button.config(bg="lightgray", fg=light_text_color)
         
         # Cambiar estilo del Treeview
         style.configure("Treeview", background="white", foreground=light_text_color, fieldbackground="white")
@@ -35,6 +39,7 @@ def set_theme(theme):
         code_editor.config(bg=dark_gray, fg=dark_text_color, insertbackground=dark_text_color)
         terminal_frame.config(bg=dark_gray)
         run_button.config(bg=dark_gray, fg=dark_text_color)
+        save_button.config(bg=dark_gray, fg=dark_text_color)
         
         # Cambiar estilo del Treeview
         style.configure("Treeview", background=dark_gray, foreground=dark_text_color, fieldbackground=dark_gray)
@@ -63,8 +68,23 @@ def run_code():
     terminal_output.insert(tk.END, output + error)  
     terminal_output.config(state=tk.DISABLED)  
 
+# Función para guardar el contenido del editor de código en el archivo actual
+def save_file():
+    global current_file_path
+    if current_file_path:
+        try:
+            with open(current_file_path, 'w', encoding='utf-8') as file:
+                code = code_editor.get("1.0", tk.END)
+                file.write(code)
+                messagebox.showinfo("Guardar", f"Archivo guardado exitosamente: {os.path.basename(current_file_path)}")
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo guardar el archivo: {e}")
+    else:
+        messagebox.showerror("Error", "No hay ningún archivo abierto para guardar.")
+
 # Función para abrir un archivo y mostrar su contenido en el editor de código
 def open_file(file_path=None):
+    global current_file_path
     if not file_path:
         file_path = filedialog.askopenfilename(
             filetypes=[("Todos los archivos", "*.*")]
@@ -75,6 +95,7 @@ def open_file(file_path=None):
                 code = file.read()
                 code_editor.delete("1.0", tk.END)  # Borra el contenido actual del editor
                 code_editor.insert(tk.END, code)  # Inserta el contenido del archivo
+                current_file_path = file_path  # Guarda la ruta del archivo abierto
                 root.title(f"Compilador - {os.path.basename(file_path)}")  # Actualiza el título con el nombre del archivo
         except Exception as e:
             terminal_output.config(state=tk.NORMAL)  
@@ -158,19 +179,27 @@ pane.add(editor_console_pane)
 code_editor = scrolledtext.ScrolledText(editor_console_pane, undo=True, wrap=tk.WORD) 
 editor_console_pane.add(code_editor, stretch="always")  
 
-# Crear un frame que contenga el botón y la terminal
+# Crear un frame para los botones de acción
+button_frame = Frame(editor_console_pane)
+editor_console_pane.add(button_frame, stretch="never")
+
+# Crear un frame que contenga los botones y la terminal
 terminal_frame = Frame(editor_console_pane)
 editor_console_pane.add(terminal_frame, stretch="always")  
 
-# Cargar la imagen de la flecha verde para el botón
+# Cargar la imagen de la flecha verde para el botón "Compilar"
 image_path = "image.png"  
 img = Image.open(image_path)
 img = img.resize((20, 20), Image.LANCZOS)  
 run_icon = ImageTk.PhotoImage(img)  
 
-# Crear el botón para ejecutar el código con la imagen y el texto "Compilar"
-run_button = tk.Button(terminal_frame, text="Compilar  ", image=run_icon, compound="right", command=run_code)  
-run_button.pack(side=tk.TOP, anchor="w", padx=10, pady=5)  
+# Crear el botón "Compilar"
+run_button = tk.Button(button_frame, text="Compilar  ", image=run_icon, compound="right", command=run_code)  
+run_button.pack(side=tk.LEFT, padx=10, pady=5)
+
+# Crear el botón "Guardar"
+save_button = tk.Button(button_frame, text="Guardar", command=save_file)  
+save_button.pack(side=tk.LEFT, padx=10, pady=5)
 
 # Crear la terminal (área de texto con scroll) para mostrar la salida del código dentro del frame de la terminal
 terminal_output = scrolledtext.ScrolledText(terminal_frame, height=10, state=tk.DISABLED, wrap=tk.WORD, bg="black", fg="white")  
