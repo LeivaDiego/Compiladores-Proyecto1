@@ -1,5 +1,5 @@
 import tkinter as tk  
-from tkinter import scrolledtext, Menu, PanedWindow, Frame  
+from tkinter import scrolledtext, Menu, PanedWindow, Frame, filedialog  
 import subprocess  
 from PIL import Image, ImageTk  
 
@@ -47,6 +47,22 @@ def run_code():
     terminal_output.insert(tk.END, output + error)  
     terminal_output.config(state=tk.DISABLED)  
 
+# Función para abrir un archivo y mostrar su contenido en el editor de código
+def open_file():
+    file_path = filedialog.askopenfilename(
+        filetypes=[("Todos los archivos", "*.*")]
+    )
+    if file_path:
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                code = file.read()
+                code_editor.delete("1.0", tk.END)  # Borra el contenido actual del editor
+                code_editor.insert(tk.END, code)  # Inserta el contenido del archivo
+        except Exception as e:
+            terminal_output.config(state=tk.NORMAL)  
+            terminal_output.insert(tk.END, f"Error al abrir el archivo: {e}\n")  
+            terminal_output.config(state=tk.DISABLED)  
+
 # Crear un PanedWindow para permitir el cambio de tamaño entre el editor de código y la consola
 pane = PanedWindow(root, orient=tk.VERTICAL)
 pane.pack(fill=tk.BOTH, expand=True)
@@ -77,11 +93,21 @@ terminal_output.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 menu_bar = Menu(root)
 root.config(menu=menu_bar)
 
-# Crear el submenú de opciones de tema
-theme_menu = Menu(menu_bar, tearoff=0)
-menu_bar.add_cascade(label="Tema", menu=theme_menu)
+# Crear el submenú de "Archivo"
+file_menu = Menu(menu_bar, tearoff=0)
+menu_bar.add_cascade(label="Archivo", menu=file_menu)
+
+# Agregar la opción "Abrir Archivo" en el submenú "Archivo"
+file_menu.add_command(label="Abrir Archivo", command=open_file)
+
+# Crear el submenú de "Configuraciones"
+config_menu = Menu(menu_bar, tearoff=0)
+menu_bar.add_cascade(label="Configuraciones", menu=config_menu)
+
+# Agregar el submenú de temas dentro de "Configuraciones"
+theme_menu = Menu(config_menu, tearoff=0)
+config_menu.add_cascade(label="Tema", menu=theme_menu)
 theme_menu.add_command(label="Claro", command=lambda: set_theme("claro"))
 theme_menu.add_command(label="Oscuro", command=lambda: set_theme("oscuro"))
-
 
 root.mainloop()  # Inicia el loop principal de tkinter para que la ventana esté en funcionamiento.
