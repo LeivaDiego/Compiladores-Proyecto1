@@ -50,7 +50,7 @@ def run_code():
     code = code_editor.get("1.0", tk.END)  # Obtenemos todo el contenido del editor de código.
     
     # Guardar el código en un archivo temporal
-    with open("temp_code.py", "w") as f:
+    with open("GUI/temp_code.py", "w") as f:
         f.write(code)  # Escribimos el código en un archivo temporal llamado 'temp_code.py'.
     
     # Ejecutar el archivo y capturar la salida
@@ -188,7 +188,7 @@ terminal_frame = Frame(editor_console_pane)
 editor_console_pane.add(terminal_frame, stretch="always")  
 
 # Cargar la imagen de la flecha verde para el botón "Compilar"
-image_path = "image.png"  
+image_path = "GUI/image.png"  
 img = Image.open(image_path)
 img = img.resize((20, 20), Image.LANCZOS)  
 run_icon = ImageTk.PhotoImage(img)  
