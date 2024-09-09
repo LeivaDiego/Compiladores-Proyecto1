@@ -1,13 +1,27 @@
 from Language.compiscriptVisitor import compiscriptVisitor
 from Language.compiscriptParser import compiscriptParser
 from Model.data_types import NumType, BooleanType, StringType, NilType
+from Model.scope import ScopeManager
 
 # Semantic Analyzer
 class SemanticAnalyzer(compiscriptVisitor):
     def __init__(self):
-        # Symbol table to track variables and their types
-        self.symbol_table = {}
+        self.scope_manager = ScopeManager()  # Create a scope manager
 
+    def visitProgram(self, ctx: compiscriptParser.ProgramContext):
+        # Enter the global scope
+        return self.visitChildren(ctx)
+    
+    def visitBlock(self, ctx: compiscriptParser.BlockContext):
+        # Visit the block and create a new scope
+        self.scope_manager.enter_scope()
+        print("Entered new scope")
+
+        # Visit the statements in the block
+        self.visitChildren(ctx)
+
+        # Exit the scope
+        self.scope_manager.exit_scope()
 
     def visitVarDecl(self, ctx: compiscriptParser.VarDeclContext):
         # Get the variable name
@@ -16,35 +30,34 @@ class SemanticAnalyzer(compiscriptVisitor):
         # Visit the expression on the right-hand side to infer the type
         var_type = self.visit(ctx.expression())
 
-        # Add the variable and its type to the symbol table
-        if var_name in self.symbol_table:
-            raise Exception(f"Variable '{var_name}' is already declared.")
-        else:
-            self.symbol_table[var_name] = var_type
-        
-        print(f"Variable '{var_name}' declared with type '{var_type.data_type}'")
-        return var_type
+        self.scope_manager.add_symbol(var_name, var_type)
+        print(f"Declared variable '{var_name}' of type '{var_type}'")
 
+    def visitPrintStmt(self, ctx: compiscriptParser.PrintStmtContext):
+        var_name = ctx.expression().getText()
+        symbol = self.scope_manager.lookup(var_name)
+
+        if symbol is None:
+            raise Exception(f"ERROR: Variable '{var_name}' not defined")
+        
+        print(f"Printing variable '{var_name}' of type '{symbol.symbol_type}'")
 
     def visitPrimary(self, ctx: compiscriptParser.PrimaryContext):
         # Infer the type of the primary expression
         if ctx.NUMBER():
-            return NumType()  # Could also handle floating point numbers if necessary
+            return NumType()
+        
         elif ctx.STRING():
             return StringType()
+        
         elif ctx.IDENTIFIER():
             var_name = ctx.IDENTIFIER().getText()
-            if var_name in self.symbol_table:
-                return self.symbol_table[var_name]
-            else:
+            symbol = self.scope_manager.lookup(var_name)
+            if symbol is None:
                 raise Exception(f"Undeclared variable '{var_name}'")
-        elif ctx.getText() == "true" or ctx.getText() == "false":
-            return BooleanType()
-        elif ctx.getText() == "nil":
-            return NilType()
+            return symbol.symbol_type  # Return the type of the found symbol
         else:
             return self.visitChildren(ctx)
-
 
     def visitExpression(self, ctx: compiscriptParser.ExpressionContext):
         # Handle expressions leading to assignments or function calls
@@ -89,7 +102,7 @@ class SemanticAnalyzer(compiscriptVisitor):
         # Visit the primary expression
         return self.visit(ctx.call())
 
-    
+
     def visitCall(self, ctx: compiscriptParser.CallContext):
         # Visit the primary expression
         return self.visit(ctx.primary())
