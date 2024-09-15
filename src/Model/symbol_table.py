@@ -1,22 +1,62 @@
+from Model.object_types import *
+
 class Symbol:
-    def __init__(self, name, symbol_type):
+    """
+    Class that represents a symbol in the language CompiScript.
+    A symbol can represent a variable, function, or class.
+    The attributes vary depending on the object type.
+    """
+    def __init__(self, name: str, obj: Object, scope_level: int, parent_scope=None):
         self.name = name
-        self.symbol_type = symbol_type  # Can be a custom Type class (NumType, StringType, etc.)
-    
+        self.object_type = obj              # Instance of Variable, Function, or Class
+        self.scope_level = scope_level      # Represents the current scope level
+        self.parent_scope = parent_scope    # Points to the parent scope for lookup in nested scopes
+
+        # Object-specific attributes
+        if isinstance(self.object_type, Variable):
+            self.data_type = self.object_type.data_type  # Variable's data type (NumType, StringType, etc.)
+        
+        elif isinstance(self.object_type, Function):
+            self.return_type = self.object_type.return_type     # Function's return type
+            self.parameters = self.object_type.parameters       # Function's parameters
+        
+        elif isinstance(self.object_type, Class):
+            self.class_name = self.object_type.name             # Class name
+            self.class_methods = self.object_type.methods       # Dictionary to store class methods by name
+            self.class_attributes = self.object_type.attributes # Dictionary to store class attributes by name
+
     def __repr__(self):
-        return f"Symbol(name={self.name}, type={self.symbol_type})"
+        return f'{self.name}: {self.object_type} (scope: {self.scope_level})'
+
 
 class SymbolTable:
+    """
+    Represents a symbol table for a specific scope.
+    It allows adding and retrieving symbols but does not handle scope hierarchy (delegated to scope manager).
+    """
     def __init__(self):
-        self.symbols = {}
+        self.symbols = {}  # Dictionary to store symbols by name
 
-    def add_symbol(self, symbol):
+    def add_symbol(self, symbol: Symbol):
+        """
+        Adds a new symbol to the table if it does not already exist in the current scope.
+        """
         if symbol.name in self.symbols:
-            raise Exception(f"Symbol '{symbol.name}' already declared in the current scope.")
+            existing_symbol = self.symbols[symbol.name]
+            # Check if the symbol already exists in the current scope (same name and type)
+            if isinstance(existing_symbol.object_type, symbol.object_type):
+                raise Exception(f'Symbol {symbol.name} of type {symbol.object_type} already exists in the current scope')
+
+        # Add the symbol to the table
         self.symbols[symbol.name] = symbol
 
-    def lookup(self, name):
-        return self.symbols.get(name, None)  # Return None if symbol is not found
 
-    def __repr__(self):
-        return f"SymbolTable({self.symbols})"
+    def get_symbol(self, name: str, object_type=None):
+        """
+        Retrieves a symbol by name. Optionally, the object type can be provided to ensure we get a symbol of a specific type.
+        """
+        if name in self.symbols:
+            symbol = self.symbols[name]
+            if object_type is None or isinstance(symbol.object_type, object_type):
+                return symbol
+        return None
