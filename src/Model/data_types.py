@@ -14,8 +14,6 @@ class DataType(Enum):
     BOOLEAN = auto()
     STRING = auto()
     NIL = auto()
-    FUNCTION = auto()
-    CLASS = auto()
 
     def __str__(self):
         return self.name.lower()

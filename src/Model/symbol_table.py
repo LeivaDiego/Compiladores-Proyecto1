@@ -6,9 +6,9 @@ class Symbol:
     A symbol can represent a variable, function, or class.
     The attributes vary depending on the object type.
     """
-    def __init__(self, name: str, obj: Object, scope_level: int, parent_scope=None):
+    def __init__(self, name: str, obj_type: Object, scope_level: int, parent_scope=None):
         self.name = name
-        self.object_type = obj              # Instance of Variable, Function, or Class
+        self.object_type = obj_type              # Instance of Variable, Function, or Class
         self.scope_level = scope_level      # Represents the current scope level
         self.parent_scope = parent_scope    # Points to the parent scope for lookup in nested scopes
 

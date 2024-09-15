@@ -7,7 +7,7 @@ from Controller.driver import SemanticAnalyzer
 
 def main():
     # Path to the input file
-    input_path = 'src/Input/sum.cspt' 
+    input_path = 'src/Input/var_decl.cspt' 
 
     # Create an input stream from the input file
     input_stream = FileStream(input_path)
@@ -32,10 +32,10 @@ def main():
 
     visualizer.render(output_file=output_file_name, format='png', output_dir='src/Output')
 
-    # # Create a semantic analyzer and visit the parse tree
-    # analyzer = SemanticAnalyzer()
-    # # Visit the parse tree to perform semantic analysis
-    # analyzer.visit(tree)
+    # Create a semantic analyzer and visit the parse tree
+    analyzer = SemanticAnalyzer()
+    # Visit the parse tree to perform semantic analysis
+    analyzer.visit(tree)
 
 if __name__ == '__main__':
     main()

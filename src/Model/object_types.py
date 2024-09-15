@@ -23,7 +23,7 @@ class Object():
         return f'{self.object_type}'
 
 class Variable(Object):
-    def __init__(self, data_type: Type):
+    def __init__(self, data_type: Type = None):
         super().__init__(ObjectType.VARIABLE)
         self.data_type = data_type  # The type of the variable (NumType, StringType, etc.)
 
