@@ -57,12 +57,66 @@ class SemanticAnalyzer(compiscriptVisitor):
             self.logger.debug("Visiting if statement in statement")
             return self.visitIfStmt(ctx.ifStmt())
         
+        # Check if the statement is a for statement
+        elif ctx.forStmt() is not None:
+            # Visit the for statement
+            self.logger.debug("Visiting for statement in statement")
+            return self.visitForStmt(ctx.forStmt())
+        
         # Check if the statement is a block statement
         elif ctx.block() is not None:
             # Visit the block statement
             self.logger.debug("Visiting block statement in statement")
             return self.visitBlockStmt(ctx.block(), scope_name)
         
+
+
+    def visitForStmt(self, ctx: compiscriptParser.ForStmtContext):
+        self.logger.debug("Visiting for statement")
+        
+        # Enter the scope of the for loop
+        self.logger.debug("Entered for loop scope")
+        self.scope_manager.enter_scope("For Loop")
+
+        # Visit the initialization (variable declaration or expression statement)
+        if ctx.varDecl() is not None:
+            self.logger.debug("Visiting variable declaration in for loop")
+            self.visitVarDecl(ctx.varDecl())
+        elif ctx.exprStmt() is not None:
+            self.logger.debug("Visiting expression statement in for loop initialization")
+            self.visitExprStmt(ctx.exprStmt())
+        else:
+            self.logger.debug("No initialization in for loop")
+
+        # Visit the condition (optional)
+        if ctx.expression(0) is not None:
+            self.logger.debug("Visiting condition expression in for loop")
+            condition_type = self.visitExpression(ctx.expression(0))
+            validate_boolean_expression_type(condition_type, " in for loop condition")
+        else:
+            self.logger.debug("No condition in for loop (infinite loop unless broken)")
+
+        # Visit the update expression (optional)
+        if ctx.expression(1) is not None:
+            self.logger.debug("Visiting update expression in for loop")
+            self.visitExpression(ctx.expression(1)) 
+        else:
+            self.logger.debug("No update expression in for loop")
+
+        # Visit the body of the for loop
+        if ctx.statement() is not None:
+            self.logger.debug("Entering body scope of for loop")
+            # Enter the scope of the body
+            self.scope_manager.enter_scope("For Loop Body")  
+            # Visit the body of the for loop
+            self.visitStatement(ctx.statement())
+            # Exit the scope of the body
+            self.scope_manager.exit_scope()
+
+        # Exit the scope of the for loop
+        self.logger.debug("Exited for loop scope")
+        self.scope_manager.exit_scope()
+
 
 
     def visitBlockStmt(self, ctx: compiscriptParser.BlockContext, scope_name=None):

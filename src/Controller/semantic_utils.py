@@ -35,3 +35,11 @@ def validate_boolean_expression_type(expression_type, extra_message=""):
     """
     if not isinstance(expression_type, BooleanType):
         raise Exception(f"Type mismatch: Expected boolean expression{extra_message}")
+    
+
+def validate_num_expression_type(expression_type, extra_message=""):
+    """
+    Validate that the expression type is NumType.
+    """
+    if not isinstance(expression_type, NumType):
+        raise Exception(f"Type mismatch: Expected numeric expression{extra_message}")
