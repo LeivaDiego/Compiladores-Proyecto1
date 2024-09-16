@@ -63,6 +63,12 @@ class SemanticAnalyzer(compiscriptVisitor):
             self.logger.debug("Visiting for statement in statement")
             return self.visitForStmt(ctx.forStmt())
         
+        # Check if the statement is a while statement
+        elif ctx.whileStmt() is not None:
+            # Visit the while statement
+            self.logger.debug("Visiting while statement in statement")
+            return self.visitWhileStmt(ctx.whileStmt())
+        
         # Check if the statement is a block statement
         elif ctx.block() is not None:
             # Visit the block statement
@@ -117,6 +123,23 @@ class SemanticAnalyzer(compiscriptVisitor):
         self.logger.debug("Exited for loop scope")
         self.scope_manager.exit_scope()
 
+
+
+    def visitWhileStmt(self, ctx: compiscriptParser.WhileStmtContext):
+        self.logger.debug("Visiting while statement")
+
+        # Visit the condition expression
+        if ctx.expression() is not None:
+            self.logger.debug("Visiting condition expression in while loop")
+            condition_type = self.visitExpression(ctx.expression())
+            validate_boolean_expression_type(condition_type, " in while loop condition")
+        else:
+            raise Exception("While loop must have a condition expression.")
+
+        # Visit the body of the while loop
+        if ctx.statement() is not None:
+            self.logger.debug("Visiting body of while loop")
+            self.visitStatement(ctx.statement(), "While Loop")   
 
 
     def visitBlockStmt(self, ctx: compiscriptParser.BlockContext, scope_name=None):
