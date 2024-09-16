@@ -18,7 +18,7 @@ class SemanticAnalyzer(compiscriptVisitor):
         self.scope_manager = ScopeManager()         # Create a scope manager
         self.logger = logger                        # Get the logger for the class
         self.in_print_ctx = False                   # Flag to indicate if the visitor is in a print statement context
-
+        self.in_return_ctx = False                  # Flag to indicate if the visitor is in a return statement context
 
     def visitProgram(self, ctx: compiscriptParser.ProgramContext):
         # Enter the global scope
@@ -73,6 +73,12 @@ class SemanticAnalyzer(compiscriptVisitor):
             # Visit the while statement
             self.logger.debug("Visiting while statement in statement")
             return self.visitWhileStmt(ctx.whileStmt())
+        
+        # Check if the statement is a return statement
+        elif ctx.returnStmt() is not None:
+            # Visit the return statement
+            self.logger.debug("Visiting return statement in statement")
+            return self.visitReturnStmt(ctx.returnStmt())
         
         # Check if the statement is a print statement
         elif ctx.printStmt() is not None:
@@ -153,6 +159,13 @@ class SemanticAnalyzer(compiscriptVisitor):
             self.visitStatement(ctx.statement(), "While Loop")   
 
 
+
+    def visitReturnStmt(self, ctx: compiscriptParser.ReturnStmtContext):
+        self.logger.debug("Visiting return statement")
+        # Visit the expression inside the return statement
+        if ctx.expression() is not None:
+            self.logger.debug("Visiting expression in return statement")
+            return self.visitExpression(ctx.expression())
 
     def visitPrintStmt(self, ctx: compiscriptParser.PrintStmtContext):
         self.logger.debug("Visiting print statement")
@@ -301,6 +314,7 @@ class SemanticAnalyzer(compiscriptVisitor):
         if ctx.parameters() is not None:
             self.logger.debug("Visiting parameters in function")
             function.parameters = self.visitParameters(ctx.parameters())
+            self.in_return_ctx = True
         else:
             self.logger.debug("No parameters in function")
 
@@ -317,6 +331,7 @@ class SemanticAnalyzer(compiscriptVisitor):
         # Exit the scope of the function
         self.logger.debug(f"Exited function scope '{identifier}'")
         self.scope_manager.exit_scope()
+        self.in_return_ctx = False
         
 
 
@@ -487,7 +502,10 @@ class SemanticAnalyzer(compiscriptVisitor):
             # Get the comparison operator ('<', '>', '<=', '>=')
             operator = ctx.getChild(2 * i - 1).getText()
             # Validate the types for the comparison operator are NumType
-            validate_arithmetic_type(left_type, right_type, operator, logger=self.logger, print_context=self.in_print_ctx) 
+            validate_arithmetic_type(left_type, right_type, operator, 
+                                     logger=self.logger, 
+                                     print_context=self.in_print_ctx,
+                                     return_context=self.in_return_ctx) 
 
         return BooleanType()
     
@@ -512,7 +530,10 @@ class SemanticAnalyzer(compiscriptVisitor):
             # Get the operator between the factors ('+', '-')
             operator = ctx.getChild(2 * i - 1).getText()
             # Validate the types for the arithmetic operator are NumType
-            validate_arithmetic_type(left_type, right_type, operator, logger=self.logger, print_context=self.in_print_ctx)
+            validate_arithmetic_type(left_type, right_type, operator, 
+                                     logger=self.logger, 
+                                     print_context=self.in_print_ctx,
+                                     return_context=self.in_return_ctx)
 
         return NumType()
     
@@ -537,7 +558,10 @@ class SemanticAnalyzer(compiscriptVisitor):
             # Get the operator between the factors ('*', '/', '%')
             operator = ctx.getChild(2 * i - 1).getText()
             # Validate the types for the arithmetic operator are NumType
-            validate_arithmetic_type(left_type, right_type, operator, logger=self.logger, print_context=self.in_print_ctx)
+            validate_arithmetic_type(left_type, right_type, operator, 
+                                     logger=self.logger, 
+                                     print_context=self.in_print_ctx,
+                                     return_context=self.in_return_ctx)
 
         return NumType()
 
