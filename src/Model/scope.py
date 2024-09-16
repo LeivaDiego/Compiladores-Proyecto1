@@ -79,5 +79,25 @@ class ScopeManager:
         return self.current_scope.get_symbol(name, object_type)
 
 
+    def update_symbol(self, name: str, symbol: Symbol):
+        """
+        Updates a symbol in the current scope or any parent scope.
+        If the symbol is not found in the current scope, it traverses up to the parent scopes
+        and updates the symbol in the first scope where it is found.
+        """
+        # Try to find the symbol in the current scope or any parent scope
+        scope = self.current_scope
+        while scope:
+            # If the symbol is found, update it and return
+            if name in scope.symbol_table.symbols:
+                scope.symbol_table.symbols[name] = symbol
+                return
+            # Move to the parent scope
+            scope = scope.parent
+
+        # If the symbol was not found in any accessible scope, raise an exception
+        raise Exception(f"Symbol '{name}' not found in any accessible scope for update.")
+
+    
     def __repr__(self):
         return f"Current Scope: {self.current_scope.name} - Level: {self.scope_level}"

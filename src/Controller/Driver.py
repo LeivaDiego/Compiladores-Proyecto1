@@ -30,7 +30,12 @@ class SemanticAnalyzer(compiscriptVisitor):
     def visitDeclaration(self, ctx: compiscriptParser.DeclarationContext):
         self.logger.debug("Visiting declaration")
         # Check if the declaration is a variable declaration
-        if ctx.varDecl() is not None:
+        if ctx.funDecl() is not None:
+            # Visit the function declaration
+            self.logger.debug("Visiting function declaration in declaration")
+            self.visitFunDecl(ctx.funDecl())
+        
+        elif ctx.varDecl() is not None:
             # Visit the variable declaration
             self.logger.debug("Visiting variable declaration in declaration")
             self.visitVarDecl(ctx.varDecl())
@@ -186,6 +191,16 @@ class SemanticAnalyzer(compiscriptVisitor):
         
 
 
+    def visitFunDecl(self, ctx: compiscriptParser.FunDeclContext):
+        self.logger.debug("Visiting function declaration")
+        # Visit the function
+        if ctx.function() is not None:
+            self.logger.debug("Visiting function in function declaration")
+            self.visitFunction(ctx.function())
+        else:
+            raise Exception("Function declaration must have a function definition.")
+
+
     def visitVarDecl(self, ctx: compiscriptParser.VarDeclContext):
         # Get the variable identifier
         self.logger.debug("Visiting variable declaration")
@@ -255,7 +270,84 @@ class SemanticAnalyzer(compiscriptVisitor):
             self.visitStatement(ctx.statement(1), "Else Block")
         else:
             self.logger.debug("No else statement in if statement")
+
+
+
+    def visitFunction(self, ctx: compiscriptParser.FunctionContext):
+        self.logger.debug("Visiting function")
+        # Get the function identifier
+        identifier = ctx.IDENTIFIER().getText()
+        self.logger.debug(f"Started function declaration for function '{identifier}'")
+
+        # Check if the function already exists in the current scope
+        self.logger.debug(f"Checking if function '{identifier}' already exists in the current scope")
+        existing_function = self.scope_manager.get_symbol(identifier, Function)
+        if existing_function is not None:
+            # Function already exists in the current scope
+            raise Exception(f"Function '{identifier}' already exists in the current scope.")
         
+        # Create a new function symbol and add it to the current scope in the symbol table
+        self.logger.debug(f"Creating new function symbol for '{identifier}'")
+        function = Function(return_type=None, parameters=[])
+        new_function_symbol = Symbol(name=identifier, obj_type=function)
+        self.logger.debug(f"Adding function '{identifier}' to current scope {self.scope_manager.current_scope}")
+        self.scope_manager.add_symbol(new_function_symbol)
+
+        # Enter the scope of the function
+        self.logger.debug(f"Entered function scope '{identifier}'")
+        scope_name = f"Function '{identifier}'"
+        self.scope_manager.enter_scope(scope_name)
+        # Handle function parameters (if any)
+        if ctx.parameters() is not None:
+            self.logger.debug("Visiting parameters in function")
+            function.parameters = self.visitParameters(ctx.parameters())
+        else:
+            self.logger.debug("No parameters in function")
+
+        # Visit the function body
+        if ctx.block() is not None:
+            self.logger.debug("Visiting block in function")
+            self.visitBlockStmt(ctx.block(), f"Function {identifier} Body")
+
+        # Update the function symbol
+        self.scope_manager.update_symbol(identifier, function)
+        self.logger.debug(f"Updated function '{identifier}' with parameters '{function.parameters}'")
+        self.logger.debug(f"Function '{identifier}' declared with return type '{function.return_type}' and parameters '{function.parameters}' in scope {self.scope_manager.current_scope}")
+        
+        # Exit the scope of the function
+        self.logger.debug(f"Exited function scope '{identifier}'")
+        self.scope_manager.exit_scope()
+        
+
+
+    def visitParameters(self, ctx: compiscriptParser.ParametersContext):
+        self.logger.debug("Visiting parameters")
+        params = []
+        # Visit the parameter list
+        for param in ctx.IDENTIFIER():
+            # Get the parameter identifier
+            identifier = param.getText()
+            self.logger.debug(f"Started parameter declaration for parameter '{identifier}'")
+
+            # Check if the parameter already exists in the current scope
+            self.logger.debug(f"Checking if parameter '{identifier}' already exists in the current scope")
+            existing_param = self.scope_manager.get_symbol(identifier, Variable)
+            if existing_param is not None:
+                # Parameter already exists in the current scope
+                raise Exception(f"Parameter '{identifier}' already exists in the current scope.")
+            
+            # Create a new parameter symbol and add it to the current scope in the symbol table
+            self.logger.debug(f"Creating new parameter symbol for '{identifier}'")
+            parameter = Variable(data_type=None)
+            new_param_symbol = Symbol(name=identifier, obj_type=parameter)
+            self.logger.debug(f"Adding parameter '{identifier}' to current scope {self.scope_manager.current_scope}")
+            self.scope_manager.add_symbol(new_param_symbol)
+
+            self.logger.debug(f"Added parameter {identifier} to current scope {self.scope_manager.current_scope}")
+            # Add the parameter to the function's parameter list
+            params.append(parameter)
+        
+        return params
 
 
     def visitExpression(self, ctx: compiscriptParser.ExpressionContext):
