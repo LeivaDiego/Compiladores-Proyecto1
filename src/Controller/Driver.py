@@ -97,7 +97,36 @@ class SemanticAnalyzer(compiscriptVisitor):
 
     def visitAssignment(self, ctx: compiscriptParser.AssignmentContext):
         self.logger.debug("Visiting assignment")
-        if ctx.logic_or() is not None:
+        
+        if ctx.IDENTIFIER() is not None:
+            # Get the identifier of the variable being assigned
+            identifier = ctx.IDENTIFIER().getText()
+            self.logger.debug(f"Started assignment for variable '{identifier}'")
+
+            # Check if the variable exists in the current scope
+            variable_symbol = self.scope_manager.get_symbol(identifier, Variable)
+            if variable_symbol is None:
+                raise Exception(f"Variable '{identifier}' is not declared in the current scope.")
+            
+            # Get the variable symbol from the symbol table
+            self.logger.debug(f"Found variable '{identifier}' in scope {variable_symbol.scope_level}")
+            # Visit the expression to infer its type
+            expression_type = self.visit(ctx.assignment())
+
+            # Check if the variable has a data type defined
+            if variable_symbol.object_type.data_type is None:
+                # Set the data type of the variable to the inferred type
+                variable_symbol.object_type.data_type = expression_type
+                self.logger.debug(f"Set type of variable '{identifier}' to '{expression_type}'")
+            
+            # Check if the variable's data type matches the inferred type
+            elif variable_symbol.object_type.data_type != expression_type:
+                raise Exception(f"Type mismatch: Cannot assign '{expression_type}' to variable '{identifier}' of type '{variable_symbol.object_type.data_type}'")
+
+            self.logger.debug(f"Assigned value to variable '{identifier}' of type '{variable_symbol.object_type.data_type}'")
+
+
+        elif ctx.logic_or() is not None:
             self.logger.debug("Visiting logic_or in assignment")
             return self.visitLogic_or(ctx.logic_or())
         
