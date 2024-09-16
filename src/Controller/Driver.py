@@ -4,7 +4,6 @@ from Model.data_types import *
 from Model.object_types import *
 from Model.scope import ScopeManager
 from Model.symbol_table import Symbol
-from Controller.semantic_utils import infer_type
 
 class SemanticAnalyzer(compiscriptVisitor):
     """
@@ -14,67 +13,102 @@ class SemanticAnalyzer(compiscriptVisitor):
     The semantic analyzer is responsible for creating the symbol table and performing
     type checking on the program.
     """
-    def __init__(self):
-        self.scope_manager = ScopeManager()  # Create a scope manager
+    def __init__(self, logger=None):
+        self.scope_manager = ScopeManager()         # Create a scope manager
+        self.logger = logger                        # Get the logger for the class
 
     def visitProgram(self, ctx: compiscriptParser.ProgramContext):
         # Enter the global scope
-        print("Entered global scope")
+        self.logger.debug("Entered global scope")
         return self.visitChildren(ctx)
     
     def visitDeclaration(self, ctx: compiscriptParser.DeclarationContext):
         # Check if the declaration is a variable declaration
         if ctx.varDecl() is not None:
             # Visit the variable declaration
+            self.logger.debug("Visiting variable declaration in declaration")
             self.visitVarDecl(ctx.varDecl())
+
+        # Check if the declaration is a statement
+        elif ctx.statement() is not None:
+            # Visit the statement
+            self.logger.debug("Visiting statement in declaration")
+            return self.visitStatement(ctx.statement())
         
+
+    def visitStatement(self, ctx: compiscriptParser.StatementContext):
+        # Check if the statement is a expression statement
+        if ctx.exprStmt() is not None:
+            # Visit the expression statement
+            self.logger.debug("Visiting expression statement in statement")
+            return self.visitExprStmt(ctx.exprStmt())
+        
+
     def visitVarDecl(self, ctx: compiscriptParser.VarDeclContext):
         # Get the variable identifier
+        self.logger.debug("Visiting variable declaration")
         identifier = ctx.IDENTIFIER().getText()
-        print(f"Started variable declaration for var: {identifier}")
+        self.logger.debug(f"Started variable declaration for var: {identifier}")
 
-        
         # Check if the variable already exists in the current scope
+        self.logger.debug(f"Checking if variable '{identifier}' already exists in the current scope")
         existing_var = self.scope_manager.get_symbol(identifier, Variable)
         if existing_var is not None:
             # Variable already exists in the current scope
             raise Exception(f"Variable '{identifier}' already exists in the current scope.")
         
         # Create a new variable symbol and add it to the current scope in the symbol table
+        self.logger.debug(f"Creating new variable symbol for '{identifier}'")
         variable = Variable(data_type=None) # Initialize the variable without defining its data type
         new_var_symbol = Symbol(name=identifier, obj_type=variable, scope_level=self.scope_manager.current_scope)
 
         # Add the variable to the current scope
+        self.logger.debug(f"Adding variable '{identifier}' to current scope {self.scope_manager.current_scope}")
         self.scope_manager.add_symbol(new_var_symbol)
-        print(f"Added variable {identifier} to current scope {self.scope_manager.current_scope}")
+        self.logger.debug(f"Added variable {identifier} to current scope {self.scope_manager.current_scope}")
 
         # Check if the variable has an initialization expression
         if ctx.expression() is not None:
             # Visit the expression to infer its type
+            self.logger.debug(f"Visiting expression to infer type for variable '{identifier}'")
             expression_type = self.visit(ctx.expression())
             variable.data_type = expression_type
-            print(f"Inferred type for variable {identifier}: {expression_type}")
+            self.logger.debug(f"Inferred type for variable {identifier}: {expression_type}")
         else:
-            print(f"No initial value for '{identifier}', type is undefined.")
+            self.logger.debug(f"No initial value for '{identifier}', type is undefined.")
 
         # Log the variable declaration
-        print(f"Variable '{identifier}' declared with type '{variable.data_type}' in scope {self.scope_manager.current_scope}")
+        self.logger.debug(f"Variable '{identifier}' declared with type '{variable.data_type}' in scope {self.scope_manager.current_scope}")
+
+
+    def visitExprStmt(self, ctx: compiscriptParser.ExprStmtContext):
+        self.logger.debug("Visiting expression statement")
+        if ctx.expression() is not None:
+            self.logger.debug("Visiting expression in expression statement")
+            return self.visitExpression(ctx.expression())
 
 
     def visitExpression(self, ctx: compiscriptParser.ExpressionContext):
+        self.logger.debug("Visiting expression")
         if ctx.assignment() is not None:
+            self.logger.debug("Visiting assignment in expression")
             return self.visitAssignment(ctx.assignment())
-        
+
+
     def visitAssignment(self, ctx: compiscriptParser.AssignmentContext):
+        self.logger.debug("Visiting assignment")
         if ctx.logic_or() is not None:
+            self.logger.debug("Visiting logic_or in assignment")
             return self.visitLogic_or(ctx.logic_or())
+        
         
     def visitLogic_or(self, ctx: compiscriptParser.Logic_orContext):
         # Initialize the result to the first element of 'logic_and'
+        self.logger.debug("Visiting logic_or")
         result = self.visitLogic_and(ctx.logic_and(0))
-
         # Evaluate the rest of the 'logic_and' elements
         for i in range(1, len(ctx.logic_and())):
+            self.logger.debug(f"Visiting logic_and {i} in logic_or")
             logic_and_result = self.visitLogic_and(ctx.logic_and(i))
             result = result or logic_and_result  # Apply the OR operation
             # If the result is True, break the loop
@@ -86,10 +120,12 @@ class SemanticAnalyzer(compiscriptVisitor):
         
     def visitLogic_and(self, ctx: compiscriptParser.Logic_andContext):
         # Initialize the result to the first element of 'equality'
+        self.logger.debug("Visiting logic_and")
         result = self.visitEquality(ctx.equality(0)) 
 
         # Evaluate the rest of the 'equality' elements
         for i in range(1, len(ctx.equality())):
+            self.logger.debug(f"Visiting equality {i} in logic_and")
             equality_result = self.visitEquality(ctx.equality(i))
             result = result and equality_result  # Apply the AND operation
             # If the result is False, break the loop
@@ -100,14 +136,16 @@ class SemanticAnalyzer(compiscriptVisitor):
 
 
     def visitEquality(self, ctx: compiscriptParser.EqualityContext):
+        self.logger.debug("Visiting equality")
         # Initialize the result to the first element of 'comparison'
         result = self.visitComparison(ctx.comparison(0))
 
         # Iterate over the rest of the 'comparison' elements
         for i in range(1, len(ctx.comparison())):
+            self.logger.debug("Gettin children in equality")
             # Get the operator between the comparisons (== or !=)
             operator = ctx.getChild(2 * i - 1).getText()
-            
+            self.logger.debug(f"Visiting comparison {i} in equality")
             # Get the result of the comparison
             comparison_result = self.visitComparison(ctx.comparison(i))
 
@@ -126,14 +164,16 @@ class SemanticAnalyzer(compiscriptVisitor):
 
         
     def visitComparison(self, ctx: compiscriptParser.ComparisonContext):
+        self.logger.debug("Visiting comparison")
         # Initialize the result to the first element of 'Term'
         result = self.visitTerm(ctx.term(0))
 
         # Iterate over the rest of the 'Term' elements
         for i in range(1, len(ctx.term())):
+            self.logger.debug("Getting children in comparison")
             # Get the operator between the terms (<, >, <=, >=)
             operator = ctx.getChild(2 * i - 1).getText()
-            
+            self.logger.debug(f"Visiting term {i} in comparison")
             # Get the result of the term
             term_result = self.visitTerm(ctx.term(i))
 
@@ -155,14 +195,16 @@ class SemanticAnalyzer(compiscriptVisitor):
     
         
     def visitTerm(self, ctx: compiscriptParser.TermContext):
+        self.logger.debug("Visiting term")
         # Initialize the result to the first element of 'factor'
         result = self.visitFactor(ctx.factor(0))
 
         # Iterate over the rest of the 'factor' elements
         for i in range(1, len(ctx.factor())):
+            self.logger.debug("Getting children in term")
             # Get the operator between the factors (+, -)
             operator = ctx.getChild(2 * i - 1).getText()
-            
+            self.logger.debug(f"Visiting factor {i} in term")
             # Get the result of the factor
             factor_result = self.visitFactor(ctx.factor(i))
 
@@ -176,14 +218,16 @@ class SemanticAnalyzer(compiscriptVisitor):
     
         
     def visitFactor(self, ctx: compiscriptParser.FactorContext):
+        self.logger.debug("Visiting factor")
         # Initialize the result to the first element of 'unary'
         result = self.visitUnary(ctx.unary(0))
 
         # Iterate over the rest of the 'unary' elements
         for i in range(1, len(ctx.unary())):
+            self.logger.debug("Getting children in factor")
             # Get the operator between the unary expressions (*, /, %)
             operator = ctx.getChild(2 * i - 1).getText()
-            
+            self.logger.debug(f"Visiting unary {i} in factor")
             # Get the result of the unary expression
             unary_result = self.visitUnary(ctx.unary(i))
 
@@ -198,14 +242,20 @@ class SemanticAnalyzer(compiscriptVisitor):
         return result
         
     def visitUnary(self, ctx: compiscriptParser.UnaryContext):
+        self.logger.debug("Visiting unary")
         if ctx.call() is not None:
+            self.logger.debug("Visiting call in unary")
             return self.visitCall(ctx.call())
         
     def visitCall(self, ctx: compiscriptParser.CallContext):
+        self.logger.debug("Visiting call")
         if ctx.primary() is not None:
+            self.logger.debug("Visiting primary in call")
             return self.visitPrimary(ctx.primary())
         
     def visitPrimary(self, ctx: compiscriptParser.PrimaryContext):
+        self.logger.debug("Visiting primary")
+        
         if ctx.NUMBER() is not None:
             return NumType()
         elif ctx.STRING() is not None:
