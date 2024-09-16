@@ -1,5 +1,6 @@
 from Language.compiscriptVisitor import compiscriptVisitor
 from Language.compiscriptParser import compiscriptParser
+from Controller.semantic_utils import *
 from Model.data_types import *
 from Model.object_types import *
 from Model.scope import ScopeManager
@@ -22,7 +23,9 @@ class SemanticAnalyzer(compiscriptVisitor):
         self.logger.debug("Entered global scope")
         return self.visitChildren(ctx)
     
+
     def visitDeclaration(self, ctx: compiscriptParser.DeclarationContext):
+        self.logger.debug("Visiting declaration")
         # Check if the declaration is a variable declaration
         if ctx.varDecl() is not None:
             # Visit the variable declaration
@@ -37,11 +40,18 @@ class SemanticAnalyzer(compiscriptVisitor):
         
 
     def visitStatement(self, ctx: compiscriptParser.StatementContext):
+        self.logger.debug("Visiting statement")
         # Check if the statement is a expression statement
         if ctx.exprStmt() is not None:
             # Visit the expression statement
             self.logger.debug("Visiting expression statement in statement")
             return self.visitExprStmt(ctx.exprStmt())
+
+        # Check if the statement is a if statement
+        elif ctx.ifStmt() is not None:
+            # Visit the if statement
+            self.logger.debug("Visiting if statement in statement")
+            return self.visitIfStmt(ctx.ifStmt())
         
 
     def visitVarDecl(self, ctx: compiscriptParser.VarDeclContext):
@@ -86,6 +96,13 @@ class SemanticAnalyzer(compiscriptVisitor):
         if ctx.expression() is not None:
             self.logger.debug("Visiting expression in expression statement")
             return self.visitExpression(ctx.expression())
+        
+
+    def visitIfStmt(self, ctx: compiscriptParser.IfStmtContext):
+        self.logger.debug("Visiting if statement")
+        if ctx.expression() is not None:
+            self.logger.debug("Visiting expression in if statement")
+            condition_type = self.visitExpression(ctx.expression())
 
 
     def visitExpression(self, ctx: compiscriptParser.ExpressionContext):
@@ -120,7 +137,7 @@ class SemanticAnalyzer(compiscriptVisitor):
                 self.logger.debug(f"Set type of variable '{identifier}' to '{expression_type}'")
             
             # Check if the variable's data type matches the inferred type
-            elif variable_symbol.object_type.data_type != expression_type:
+            elif str(variable_symbol.object_type.data_type) != str(expression_type):
                 raise Exception(f"Type mismatch: Cannot assign '{expression_type}' to variable '{identifier}' of type '{variable_symbol.object_type.data_type}'")
 
             self.logger.debug(f"Assigned value to variable '{identifier}' of type '{variable_symbol.object_type.data_type}'")
@@ -132,156 +149,163 @@ class SemanticAnalyzer(compiscriptVisitor):
         
         
     def visitLogic_or(self, ctx: compiscriptParser.Logic_orContext):
-        # Initialize the result to the first element of 'logic_and'
         self.logger.debug("Visiting logic_or")
-        result = self.visitLogic_and(ctx.logic_and(0))
+        # Check if there is only one 'logic_and' element
+        # meaning this step is a wrapper around 'logic_and' only
+        if len(ctx.logic_and()) == 1:
+            self.logger.debug("Single logic_and in logic_or")
+            return self.visitLogic_and(ctx.logic_and(0))
+        
+        # Get the left term type
+        left_term_type = self.visitLogic_and(ctx.logic_and(0))
+
         # Evaluate the rest of the 'logic_and' elements
         for i in range(1, len(ctx.logic_and())):
             self.logger.debug(f"Visiting logic_and {i} in logic_or")
-            logic_and_result = self.visitLogic_and(ctx.logic_and(i))
-            result = result or logic_and_result  # Apply the OR operation
-            # If the result is True, break the loop
-            if result:
-                break
+            # Get the right term type
+            right_term_type = self.visitLogic_and(ctx.logic_and(i))
+            # Validate the types for the 'or' operator are BooleanType
+            validate_boolean_type(left_term_type, right_term_type, 'or')
 
-        return result
+        return BooleanType()
 
         
     def visitLogic_and(self, ctx: compiscriptParser.Logic_andContext):
-        # Initialize the result to the first element of 'equality'
         self.logger.debug("Visiting logic_and")
-        result = self.visitEquality(ctx.equality(0)) 
+        # Check if there is only one 'equality' element
+        # meaning this step is a wrapper around 'equality' only
+        if len(ctx.equality()) == 1:
+            self.logger.debug("Single equality in logic_and")
+            return self.visitEquality(ctx.equality(0))
+        
+        # Get the type of the left term
+        left_type = self.visitEquality(ctx.equality(0))
 
         # Evaluate the rest of the 'equality' elements
         for i in range(1, len(ctx.equality())):
             self.logger.debug(f"Visiting equality {i} in logic_and")
-            equality_result = self.visitEquality(ctx.equality(i))
-            result = result and equality_result  # Apply the AND operation
-            # If the result is False, break the loop
-            if not result:
-                break
+            # Get the type of the right term
+            right_type = self.visitEquality(ctx.equality(i))
+            # Validate the types for the 'and' operator are BooleanType
+            validate_boolean_type(left_type, right_type, 'and') 
 
-        return result
+        return BooleanType()
 
 
     def visitEquality(self, ctx: compiscriptParser.EqualityContext):
         self.logger.debug("Visiting equality")
-        # Initialize the result to the first element of 'comparison'
-        result = self.visitComparison(ctx.comparison(0))
+        # Check if there is only one 'comparison' element
+        # meaning this step is a wrapper around 'comparison' only
+        if len(ctx.comparison()) == 1:
+            self.logger.debug("Single comparison in equality")
+            return self.visitComparison(ctx.comparison(0))
+        
+        # Get the type of the left term
+        left_type = self.visitComparison(ctx.comparison(0))
 
-        # Iterate over the rest of the 'comparison' elements
+        # Evaluate the rest of the 'comparison' elements
         for i in range(1, len(ctx.comparison())):
-            self.logger.debug("Gettin children in equality")
-            # Get the operator between the comparisons (== or !=)
-            operator = ctx.getChild(2 * i - 1).getText()
             self.logger.debug(f"Visiting comparison {i} in equality")
-            # Get the result of the comparison
-            comparison_result = self.visitComparison(ctx.comparison(i))
+            # Get the type of the right term
+            right_type = self.visitComparison(ctx.comparison(i))
+            # Get the equality operator ('==', '!=')
+            operator = ctx.getChild(2 * i - 1).getText()
+            # Validate the types for the equality operator are the same
+            # and are either NumType or StringType
+            validate_equality_type(left_type, right_type, operator) 
 
-            # Determine the result of the equality operation
-            if operator == '==':
-                result = result == comparison_result
-            elif operator == '!=':
-                result = result != comparison_result
-
-            # If the result is False, break the loop
-            if not result:
-                break
-
-        return result
+        return BooleanType()
 
 
         
     def visitComparison(self, ctx: compiscriptParser.ComparisonContext):
         self.logger.debug("Visiting comparison")
-        # Initialize the result to the first element of 'Term'
-        result = self.visitTerm(ctx.term(0))
-
-        # Iterate over the rest of the 'Term' elements
-        for i in range(1, len(ctx.term())):
-            self.logger.debug("Getting children in comparison")
-            # Get the operator between the terms (<, >, <=, >=)
-            operator = ctx.getChild(2 * i - 1).getText()
-            self.logger.debug(f"Visiting term {i} in comparison")
-            # Get the result of the term
-            term_result = self.visitTerm(ctx.term(i))
-
-            # Determine the result of the comparison operation
-            if operator == '<':
-                result = result < term_result
-            elif operator == '>':
-                result = result > term_result
-            elif operator == '<=':
-                result = result <= term_result
-            elif operator == '>=':
-                result = result >= term_result
-
-            # If the result is False, break the loop
-            if not result:
-                break
+        # Check if there is only one 'term' element
+        # meaning this step is a wrapper around 'term' only
+        if len(ctx.term()) == 1:
+            self.logger.debug("Single term in comparison")
+            return self.visitTerm(ctx.term(0))
         
-        return result
+        # Get the type of the left term
+        left_type = self.visitTerm(ctx.term(0))
+        self.logger.debug(f"Visited left term in comparison: {left_type}")
+
+        # Evaluate the rest of the 'term' elements
+        for i in range(1, len(ctx.term())):
+            self.logger.debug(f"Visiting term {i} in comparison")
+            # Get the type of the right term
+            right_type = self.visitTerm(ctx.term(i))
+            self.logger.debug(f"Visited right term in comparison: {right_type}")
+            # Get the comparison operator ('<', '>', '<=', '>=')
+            operator = ctx.getChild(2 * i - 1).getText()
+            # Validate the types for the comparison operator are NumType
+            validate_numeric_type(left_type, right_type, operator) 
+
+        return BooleanType()
     
         
     def visitTerm(self, ctx: compiscriptParser.TermContext):
         self.logger.debug("Visiting term")
-        # Initialize the result to the first element of 'factor'
-        result = self.visitFactor(ctx.factor(0))
-
-        # Iterate over the rest of the 'factor' elements
+        # Check if there is only one 'factor' element
+        # meaning this step is a wrapper around 'factor' only
+        if len(ctx.factor()) == 1:
+            self.logger.debug("Single factor in term")
+            return self.visitFactor(ctx.factor(0))
+        
+        # Get the type of the left term
+        left_type = self.visitFactor(ctx.factor(0))
+        
+        # Evaluate the rest of the 'factor' elements
         for i in range(1, len(ctx.factor())):
-            self.logger.debug("Getting children in term")
-            # Get the operator between the factors (+, -)
-            operator = ctx.getChild(2 * i - 1).getText()
             self.logger.debug(f"Visiting factor {i} in term")
-            # Get the result of the factor
-            factor_result = self.visitFactor(ctx.factor(i))
+            # Get the type of the right term
+            right_type = self.visitFactor(ctx.factor(i))
+            # Get the operator between the factors ('+', '-')
+            operator = ctx.getChild(2 * i - 1).getText()
+            # Validate the types for the arithmetic operator are NumType
+            validate_numeric_type(left_type, right_type, operator)
 
-            # Determine the result of the term operation
-            if operator == '+':
-                result = result + factor_result
-            elif operator == '-':
-                result = result - factor_result
-
-        return result
+        return NumType()
     
         
     def visitFactor(self, ctx: compiscriptParser.FactorContext):
         self.logger.debug("Visiting factor")
-        # Initialize the result to the first element of 'unary'
-        result = self.visitUnary(ctx.unary(0))
+        # Check if there is only one 'unary' element
+        # meaning this step is a wrapper around 'unary' only
+        if len(ctx.unary()) == 1:
+            self.logger.debug("Single unary in factor")
+            return self.visitUnary(ctx.unary(0))
 
-        # Iterate over the rest of the 'unary' elements
+        # Get the type of the left term
+        left_type = self.visitUnary(ctx.unary(0))
+
+        # Evaluate the rest of the 'unary' elements
         for i in range(1, len(ctx.unary())):
-            self.logger.debug("Getting children in factor")
-            # Get the operator between the unary expressions (*, /, %)
-            operator = ctx.getChild(2 * i - 1).getText()
             self.logger.debug(f"Visiting unary {i} in factor")
-            # Get the result of the unary expression
-            unary_result = self.visitUnary(ctx.unary(i))
+            # Get the type of the right term
+            right_type = self.visitUnary(ctx.unary(i))
+            # Get the operator between the factors ('*', '/', '%')
+            operator = ctx.getChild(2 * i - 1).getText()
+            # Validate the types for the arithmetic operator are NumType
+            validate_numeric_type(left_type, right_type, operator)
 
-            # Determine the result of the factor operation
-            if operator == '*':
-                result = result * unary_result
-            elif operator == '/':
-                result = result / unary_result
-            elif operator == '%':
-                result = result % unary_result
+        return NumType()
 
-        return result
-        
+
     def visitUnary(self, ctx: compiscriptParser.UnaryContext):
         self.logger.debug("Visiting unary")
         if ctx.call() is not None:
             self.logger.debug("Visiting call in unary")
             return self.visitCall(ctx.call())
         
+
     def visitCall(self, ctx: compiscriptParser.CallContext):
         self.logger.debug("Visiting call")
         if ctx.primary() is not None:
             self.logger.debug("Visiting primary in call")
             return self.visitPrimary(ctx.primary())
         
+
     def visitPrimary(self, ctx: compiscriptParser.PrimaryContext):
         self.logger.debug("Visiting primary")
         
@@ -293,5 +317,10 @@ class SemanticAnalyzer(compiscriptVisitor):
             return BooleanType()
         elif ctx.getText() == 'nil' or ctx.getText() == None:
             return NilType()
-        else:
-            return "Unknown"
+        elif ctx.IDENTIFIER() is not None:
+            identifier = ctx.IDENTIFIER().getText()
+            self.logger.debug(f"Getting type for identifier '{identifier}'")
+            variable_symbol = self.scope_manager.get_symbol(identifier, Variable)
+            if variable_symbol is None:
+                raise Exception(f"Variable '{identifier}' is not declared in the current scope.")
+            return variable_symbol.object_type.data_type

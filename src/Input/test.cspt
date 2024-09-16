@@ -1,2 +1,6 @@
-var a;
-a = 3;
+var i = "0";
+if (i <= 0){
+    print "ok";
+} else {
+    print "not ok";
+}

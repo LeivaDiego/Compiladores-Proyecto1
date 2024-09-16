@@ -62,7 +62,7 @@ def main():
 
     # Create a parse tree visualizer and visit the parse tree
     # to generate a PNG file of the parse tree
-    visualizer = TreeVisualizer(logger = logging.getLogger(__name__))
+    visualizer = TreeVisualizer(logger=logger)
     visualizer.visit(tree)
 
     # Extract the file name without extension
@@ -74,14 +74,14 @@ def main():
     visualizer.render(output_file=output_file_name, format='png', output_dir='src/Output')
 
     # Create a semantic analyzer and visit the parse tree
-    analyzer = SemanticAnalyzer(logger=logging.getLogger(__name__))
+    analyzer = SemanticAnalyzer(logger=logger)
     
     # Visit the parse tree to perform semantic analysis
     try:
         analyzer.visit(tree)
         logger.success("Compilation completed: No errors found.")
     except Exception as e:
-        logger.error(f"Compilation failed: {str(e)}")
+        logger.error(f"{str(e)}")
 
 if __name__ == '__main__':
     main()
