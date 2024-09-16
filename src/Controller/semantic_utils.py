@@ -8,11 +8,16 @@ def validate_logical_types(left_type, right_type, operator):
         raise Exception(f"Type mismatch: Operator '{operator}' requires boolean operands, found '{left_type}' and '{right_type}'")
 
 
-def validate_arithmetic_type(left_type, right_type, operator):
+def validate_arithmetic_type(left_type, right_type, operator, logger, print_context):
     """
     Validate that both types are NumType for arithmetic operators ('+', '-', '*', '/', '%') 
     or comparison operators ('<', '>', '<=', '>=').
     """
+    # Check if the + operator is being used and print the context 
+    if operator == '+' and print_context:
+        logger.debug("Operator '+' is being used as a concatenation operator.")
+        return
+    
     if not isinstance(left_type, NumType) or not isinstance(right_type, NumType):
         raise Exception(f"Type mismatch: Operator '{operator}' requires numeric operands, found '{left_type}' and '{right_type}'")
 

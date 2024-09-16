@@ -17,7 +17,7 @@ class SemanticAnalyzer(compiscriptVisitor):
     def __init__(self, logger=None):
         self.scope_manager = ScopeManager()         # Create a scope manager
         self.logger = logger                        # Get the logger for the class
-
+        self.in_print_ctx = False                   # Flag to indicate if the visitor is in a print statement context
 
 
     def visitProgram(self, ctx: compiscriptParser.ProgramContext):
@@ -68,6 +68,12 @@ class SemanticAnalyzer(compiscriptVisitor):
             # Visit the while statement
             self.logger.debug("Visiting while statement in statement")
             return self.visitWhileStmt(ctx.whileStmt())
+        
+        # Check if the statement is a print statement
+        elif ctx.printStmt() is not None:
+            # Visit the print statement
+            self.logger.debug("Visiting print statement in statement")
+            return self.visitPrintStmt(ctx.printStmt())
         
         # Check if the statement is a block statement
         elif ctx.block() is not None:
@@ -140,6 +146,22 @@ class SemanticAnalyzer(compiscriptVisitor):
         if ctx.statement() is not None:
             self.logger.debug("Visiting body of while loop")
             self.visitStatement(ctx.statement(), "While Loop")   
+
+
+
+    def visitPrintStmt(self, ctx: compiscriptParser.PrintStmtContext):
+        self.logger.debug("Visiting print statement")
+
+        # Change print context flag to True 
+        # to indicate that the visitor is in a print statement
+        self.in_print_ctx = True
+
+        # Visit the expression inside the print statement
+        self.visit(ctx.expression())
+
+        # Change print context flag to False 
+        # to indicate that the visitor is no longer in a print statement
+        self.in_print_ctx = False
 
 
     def visitBlockStmt(self, ctx: compiscriptParser.BlockContext, scope_name=None):
@@ -373,7 +395,7 @@ class SemanticAnalyzer(compiscriptVisitor):
             # Get the comparison operator ('<', '>', '<=', '>=')
             operator = ctx.getChild(2 * i - 1).getText()
             # Validate the types for the comparison operator are NumType
-            validate_arithmetic_type(left_type, right_type, operator) 
+            validate_arithmetic_type(left_type, right_type, operator, logger=self.logger, print_context=self.in_print_ctx) 
 
         return BooleanType()
     
@@ -398,7 +420,7 @@ class SemanticAnalyzer(compiscriptVisitor):
             # Get the operator between the factors ('+', '-')
             operator = ctx.getChild(2 * i - 1).getText()
             # Validate the types for the arithmetic operator are NumType
-            validate_arithmetic_type(left_type, right_type, operator)
+            validate_arithmetic_type(left_type, right_type, operator, logger=self.logger, print_context=self.in_print_ctx)
 
         return NumType()
     
@@ -423,7 +445,7 @@ class SemanticAnalyzer(compiscriptVisitor):
             # Get the operator between the factors ('*', '/', '%')
             operator = ctx.getChild(2 * i - 1).getText()
             # Validate the types for the arithmetic operator are NumType
-            validate_arithmetic_type(left_type, right_type, operator)
+            validate_arithmetic_type(left_type, right_type, operator, logger=self.logger, print_context=self.in_print_ctx)
 
         return NumType()
 
