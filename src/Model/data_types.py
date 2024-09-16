@@ -1,6 +1,15 @@
 from enum import Enum, auto
 
 class DataType(Enum):
+    """
+    Enum class for data types in the language CompiScript.
+
+    The data types are:
+    - NUM: Represents a number.
+    - BOOLEAN: Represents a boolean.
+    - STRING: Represents a string.
+    - NIL: Represents a null value.
+    """
     NUM = auto()
     BOOLEAN = auto()
     STRING = auto()
@@ -9,11 +18,18 @@ class DataType(Enum):
     def __str__(self):
         return self.name.lower()
 
-
 class Type():
+    """
+    Base class that represents a type in the language CompiScript.
+    """
     def __init__(self, data_type: DataType):
         self.data_type = data_type
 
+    def __str__(self):
+        return str(self.data_type)
+
+    def __repr__(self):
+        return self.__str__()
 
 class NumType(Type):
     def __init__(self):
@@ -30,5 +46,3 @@ class StringType(Type):
 class NilType(Type):
     def __init__(self):
         super().__init__(DataType.NIL)
-
-

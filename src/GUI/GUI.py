@@ -188,7 +188,7 @@ terminal_frame = Frame(editor_console_pane)
 editor_console_pane.add(terminal_frame, stretch="always")  
 
 # Cargar la imagen de la flecha verde para el botón "Compilar"
-image_path = "GUI/image.png"  
+image_path = "src/GUI/image.png"  
 img = Image.open(image_path)
 img = img.resize((20, 20), Image.LANCZOS)  
 run_icon = ImageTk.PhotoImage(img)  

@@ -15,9 +15,10 @@ class TreeVisualizer:
         - visit: Visits a node in the parse tree and adds it to the graph.
         - render: Renders the graph to a file in the specified format and directory.
     """
-    def __init__(self):
+    def __init__(self, logger=None):
         self.graph = Digraph(comment='Parse Tree')
         self.node_count = 0
+        self.logger = logger
 
 
     def add_node(self, label):
@@ -104,4 +105,4 @@ class TreeVisualizer:
         # Render the graph to the specified format and path
         self.graph.render(filename=output_path, format=format, cleanup=cleanup)
 
-        print(f"SUCCESS: Parse tree saved as {output_path}.{format}")
+        self.logger.success(f"Parse tree saved as {output_path}.{format}")
