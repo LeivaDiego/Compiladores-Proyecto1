@@ -22,7 +22,11 @@ def validate_arithmetic_type(left_type, right_type, operator, logger, print_cont
         logger.debug(f"Operation type inference for operator '{operator}' postponed until runtime.")
         return
     
-    if not isinstance(left_type, NumType) or not isinstance(right_type, NumType):
+    if isinstance(left_type, StringType) and isinstance(right_type, StringType):
+        logger.debug(f"Operator '{operator}' is being used as a concatenation operator.")
+        return
+    
+    elif not isinstance(left_type, NumType) or not isinstance(right_type, NumType):
         raise Exception(f"Type mismatch: Operator '{operator}' requires numeric operands, found '{left_type}' and '{right_type}'")
 
 

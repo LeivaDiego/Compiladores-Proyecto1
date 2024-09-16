@@ -1,3 +1,4 @@
-fun sum(a, b){
-    return a + b;
+fun sum(){
+    var a = 1;
+    return;
 }

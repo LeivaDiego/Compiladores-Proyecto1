@@ -27,7 +27,7 @@ class SemanticAnalyzer(compiscriptVisitor):
     
 
 
-    def visitDeclaration(self, ctx: compiscriptParser.DeclarationContext):
+    def visitDeclaration(self, ctx: compiscriptParser.DeclarationContext, function_symbol=None):
         self.logger.debug("Visiting declaration")
         # Check if the declaration is a variable declaration
         if ctx.funDecl() is not None:
@@ -44,11 +44,11 @@ class SemanticAnalyzer(compiscriptVisitor):
         elif ctx.statement() is not None:
             # Visit the statement
             self.logger.debug("Visiting statement in declaration")
-            return self.visitStatement(ctx.statement())
+            return self.visitStatement(ctx.statement(), function_symbol=function_symbol)
         
 
 
-    def visitStatement(self, ctx: compiscriptParser.StatementContext, scope_name=None):
+    def visitStatement(self, ctx: compiscriptParser.StatementContext, scope_name=None, function_symbol=None):
         self.logger.debug("Visiting statement")
         # Check if the statement is a expression statement
         if ctx.exprStmt() is not None:
@@ -78,7 +78,7 @@ class SemanticAnalyzer(compiscriptVisitor):
         elif ctx.returnStmt() is not None:
             # Visit the return statement
             self.logger.debug("Visiting return statement in statement")
-            return self.visitReturnStmt(ctx.returnStmt())
+            return self.visitReturnStmt(ctx.returnStmt(), function_symbol=function_symbol)
         
         # Check if the statement is a print statement
         elif ctx.printStmt() is not None:
@@ -160,12 +160,34 @@ class SemanticAnalyzer(compiscriptVisitor):
 
 
 
-    def visitReturnStmt(self, ctx: compiscriptParser.ReturnStmtContext):
+    def visitReturnStmt(self, ctx: compiscriptParser.ReturnStmtContext, function_symbol=None):
         self.logger.debug("Visiting return statement")
-        # Visit the expression inside the return statement
+        # If there is an expression in the return statement, visit it
         if ctx.expression() is not None:
             self.logger.debug("Visiting expression in return statement")
-            return self.visitExpression(ctx.expression())
+            return_type = self.visitExpression(ctx.expression())
+
+            # Check if the function has a return dependent on parameters
+            # using the return context flag
+            if not self.in_return_ctx:
+                # Return not dependent on parameters
+                # Check if the function has a return type defined
+                if isinstance(function_symbol.return_type, NilType):
+                    function_symbol.return_type = return_type
+                    self.scope_manager.update_symbol(function_symbol.name, function_symbol)
+                    self.logger.debug(f"Inferred return type for function '{function_symbol.name}' is '{return_type}'")
+                else:
+                    # Validate that the return type matches the function's return type
+                    if str(function_symbol.return_type) != str(return_type):
+                        raise Exception(f"Type mismatch: Cannot return '{return_type}' from function '{function_symbol.name}' with return type '{function_symbol.return_type}'")
+            else:
+                # Postpone validation if we are in a return context (params-dependent)
+                self.logger.debug("Postponing return type validation due to parameter dependency")
+        else:
+            # Set the return type to NilType if there is no return expression
+            return_type = NilType()
+            self.logger.debug("No return expression in return statement")
+            self.scope_manager.update_symbol(function_symbol.name, function_symbol)
 
     def visitPrintStmt(self, ctx: compiscriptParser.PrintStmtContext):
         self.logger.debug("Visiting print statement")
@@ -182,7 +204,7 @@ class SemanticAnalyzer(compiscriptVisitor):
         self.in_print_ctx = False
 
 
-    def visitBlockStmt(self, ctx: compiscriptParser.BlockContext, scope_name=None):
+    def visitBlockStmt(self, ctx: compiscriptParser.BlockContext, scope_name=None, function_symbol=None):
         self.logger.debug("Visiting block statement")
         # Enter a new scope for the block
         if scope_name is not None:
@@ -196,7 +218,7 @@ class SemanticAnalyzer(compiscriptVisitor):
         self.logger.debug("Visiting block statements")
         for i in range(len(ctx.declaration())):
             self.logger.debug(f"Visiting declaration {i} in block statement")
-            self.visitDeclaration(ctx.declaration(i))
+            self.visitDeclaration(ctx.declaration(i), function_symbol)
 
         # Exit the block scope
         self.logger.debug("Exited block scope")
@@ -248,7 +270,7 @@ class SemanticAnalyzer(compiscriptVisitor):
             self.logger.debug(f"No initial value for '{identifier}', type is undefined.")
 
         # Log the variable declaration
-        self.logger.debug(f"Variable '{identifier}' declared with type '{variable.data_type}' in scope {self.scope_manager.current_scope}")
+        self.logger.debug(f"Variable '{identifier}' declared with type '{variable.data_type}' in {self.scope_manager.current_scope}")
 
 
 
@@ -301,10 +323,10 @@ class SemanticAnalyzer(compiscriptVisitor):
         
         # Create a new function symbol and add it to the current scope in the symbol table
         self.logger.debug(f"Creating new function symbol for '{identifier}'")
-        function = Function(return_type=None, parameters=[])
-        new_function_symbol = Symbol(name=identifier, obj_type=function)
+        function = Function(return_type = NilType())
+        function_symbol = Symbol(name=identifier, obj_type=function)
         self.logger.debug(f"Adding function '{identifier}' to current scope {self.scope_manager.current_scope}")
-        self.scope_manager.add_symbol(new_function_symbol)
+        self.scope_manager.add_symbol(function_symbol)
 
         # Enter the scope of the function
         self.logger.debug(f"Entered function scope '{identifier}'")
@@ -313,20 +335,21 @@ class SemanticAnalyzer(compiscriptVisitor):
         # Handle function parameters (if any)
         if ctx.parameters() is not None:
             self.logger.debug("Visiting parameters in function")
-            function.parameters = self.visitParameters(ctx.parameters())
+            function_symbol.parameters = self.visitParameters(ctx.parameters())
             self.in_return_ctx = True
+            self.scope_manager.update_symbol(identifier, function_symbol)
+            self.logger.debug(f"Updated function '{identifier}' with parameters '{function_symbol.parameters}'")
         else:
             self.logger.debug("No parameters in function")
 
         # Visit the function body
         if ctx.block() is not None:
             self.logger.debug("Visiting block in function")
-            self.visitBlockStmt(ctx.block(), f"Function {identifier} Body")
+            self.visitBlockStmt(ctx.block(), f"Function {identifier} Body", function_symbol)
 
         # Update the function symbol
-        self.scope_manager.update_symbol(identifier, function)
-        self.logger.debug(f"Updated function '{identifier}' with parameters '{function.parameters}'")
-        self.logger.debug(f"Function '{identifier}' declared with return type '{function.return_type}' and parameters '{function.parameters}' in scope {self.scope_manager.current_scope}")
+        
+        self.logger.debug(f"Function '{identifier}' declared with return type '{function_symbol.return_type}' and parameters '{function_symbol.parameters}' in {self.scope_manager.current_scope}")
         
         # Exit the scope of the function
         self.logger.debug(f"Exited function scope '{identifier}'")
@@ -387,7 +410,7 @@ class SemanticAnalyzer(compiscriptVisitor):
                 raise Exception(f"Variable '{identifier}' is not declared in the current scope - {self.scope_manager.current_scope}")
             
             # Get the variable symbol from the symbol table
-            self.logger.debug(f"Found variable '{identifier}' in scope {self.scope_manager.current_scope}")
+            self.logger.debug(f"Found variable '{identifier}' in {self.scope_manager.current_scope}")
             # Visit the expression to infer its type
             expression_type = self.visit(ctx.assignment())
 

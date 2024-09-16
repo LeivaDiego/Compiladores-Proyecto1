@@ -31,7 +31,7 @@ class Variable(Object):
         return f'{self.object_type} ({self.data_type})'
 
 class Function(Object):
-    def __init__(self, return_type: Type, parameters: list):
+    def __init__(self, return_type: Type, parameters: list=None):
         super().__init__(ObjectType.FUNCTION)
         self.return_type = return_type  # The return type of the function
         self.parameters = parameters    # List of parameter types (if any)

@@ -25,8 +25,11 @@ class Type():
     def __init__(self, data_type: DataType):
         self.data_type = data_type
 
+    def __str__(self):
+        return str(self.data_type)
+
     def __repr__(self):
-        return f'{self.data_type}'
+        return self.__str__()
 
 class NumType(Type):
     def __init__(self):
