@@ -6,12 +6,10 @@ class Symbol:
     A symbol can represent a variable, function, or class.
     The attributes vary depending on the object type.
     """
-    def __init__(self, name: str, obj_type: Object, scope_level: int, parent_scope=None):
+    def __init__(self, name: str, obj_type: Object):
         self.name = name
         self.object_type = obj_type              # Instance of Variable, Function, or Class
-        self.scope_level = scope_level      # Represents the current scope level
-        self.parent_scope = parent_scope    # Points to the parent scope for lookup in nested scopes
-
+        
         # Object-specific attributes
         if isinstance(self.object_type, Variable):
             self.data_type = self.object_type.data_type  # Variable's data type (NumType, StringType, etc.)
@@ -26,7 +24,7 @@ class Symbol:
             self.class_attributes = self.object_type.attributes # Dictionary to store class attributes by name
 
     def __repr__(self):
-        return f'{self.name}: {self.object_type} (scope: {self.scope_level})'
+        return f'{self.name}: {self.object_type}'
 
 
 class SymbolTable:

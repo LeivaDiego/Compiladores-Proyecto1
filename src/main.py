@@ -77,11 +77,13 @@ def main():
     analyzer = SemanticAnalyzer(logger=logger)
     
     # Visit the parse tree to perform semantic analysis
-    try:
-        analyzer.visit(tree)
-        logger.success("Compilation completed: No errors found.")
-    except Exception as e:
-        logger.error(f"{str(e)}")
+    analyzer.visit(tree)
+    logger.success("Compilation completed: No errors found.")
+    
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception as e:
+        logging.error(f"{str(e)}")
+

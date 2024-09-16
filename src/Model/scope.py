@@ -5,11 +5,12 @@ class Scope:
     Represents a single scope in the program.
     Each scope has its own symbol table and may have a parent scope and children scopes.
     """
-    def __init__(self, name: str, parent=None):
+    def __init__(self, name: str, level: int, parent=None):
         self.name = name
-        self.symbol_table = SymbolTable()  # Each scope has its own symbol table
-        self.parent = parent  # Parent scope (if not global)
-        self.children = []  # List of child scopes
+        self.symbol_table = SymbolTable()   # Each scope has its own symbol table
+        self.parent = parent                # Parent scope (if not global)
+        self.level = level                  # Current scope level
+        self.children = []                  # List of child scopes
 
     def add_child(self, child_scope):
         """Adds a child scope to the current scope."""
@@ -42,16 +43,20 @@ class ScopeManager:
     Manages the tree of scopes in the program.
     """
     def __init__(self):
-        self.global_scope = Scope("global")  # Initialize the global scope
-        self.current_scope = self.global_scope  # Start with global scope
+        self.global_scope = Scope("global", level=0)    # Initialize the global scope
+        self.current_scope = self.global_scope          # Start with global scope
+        self.scope_level = 0                            # Start at depth 0
+
 
     def enter_scope(self, scope_name: str):
         """
         Enters a new child scope under the current scope.
         """
-        new_scope = Scope(scope_name, parent=self.current_scope)
+        self.scope_level += 1 # Increase the scope depth
+        new_scope = Scope(scope_name, level=self.scope_level, parent=self.current_scope)
         self.current_scope.add_child(new_scope)
         self.current_scope = new_scope  # Move to the new scope
+        
 
     def exit_scope(self):
         """
@@ -59,10 +64,13 @@ class ScopeManager:
         """
         if self.current_scope.parent:
             self.current_scope = self.current_scope.parent  # Move back to the parent scope
+            self.scope_level -= 1 # Decrease the scope depth
+
 
     def add_symbol(self, symbol: Symbol):
         """Adds a symbol to the current scope."""
         self.current_scope.add_symbol(symbol)
+
 
     def get_symbol(self, name: str, object_type=None):
         """
@@ -70,5 +78,6 @@ class ScopeManager:
         """
         return self.current_scope.get_symbol(name, object_type)
 
+
     def __repr__(self):
-        return f"Current Scope: {self.current_scope.name}"
+        return f"Current Scope: {self.current_scope.name} - Level: {self.scope_level}"

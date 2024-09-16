@@ -1,6 +1,6 @@
 from Model.data_types import BooleanType, NumType, StringType
 
-def validate_boolean_type(left_type, right_type, operator):
+def validate_logical_types(left_type, right_type, operator):
     """
     Validate that both types are BooleanType for logical operators ('and', 'or').
     """
@@ -8,7 +8,7 @@ def validate_boolean_type(left_type, right_type, operator):
         raise Exception(f"Type mismatch: Operator '{operator}' requires boolean operands, found '{left_type}' and '{right_type}'")
 
 
-def validate_numeric_type(left_type, right_type, operator):
+def validate_arithmetic_type(left_type, right_type, operator):
     """
     Validate that both types are NumType for arithmetic operators ('+', '-', '*', '/', '%') 
     or comparison operators ('<', '>', '<=', '>=').
@@ -27,3 +27,11 @@ def validate_equality_type(left_type, right_type, operator):
 
     if not isinstance(left_type, (NumType, StringType)):
         raise Exception(f"Type mismatch: Operator '{operator}' requires operands to be either both numbers or both strings, found '{left_type}' and '{right_type}'")
+
+
+def validate_boolean_expression_type(expression_type, extra_message=""):
+    """
+    Validate that the expression type is BooleanType.
+    """
+    if not isinstance(expression_type, BooleanType):
+        raise Exception(f"Type mismatch: Expected boolean expression{extra_message}")
