@@ -174,7 +174,7 @@ class SemanticAnalyzer(compiscriptVisitor):
                 # Check if the function has a return type defined
                 if isinstance(function_symbol.return_type, NilType):
                     function_symbol.return_type = return_type
-                    self.scope_manager.update_symbol(function_symbol.name, function_symbol)
+                    self.scope_manager.update_symbol(function_symbol.name, function_symbol, Function)
                     self.logger.debug(f"Inferred return type for function '{function_symbol.name}' is '{return_type}'")
                 else:
                     # Validate that the return type matches the function's return type
@@ -187,7 +187,8 @@ class SemanticAnalyzer(compiscriptVisitor):
             # Set the return type to NilType if there is no return expression
             return_type = NilType()
             self.logger.debug("No return expression in return statement")
-            self.scope_manager.update_symbol(function_symbol.name, function_symbol)
+            self.scope_manager.update_symbol(function_symbol.name, function_symbol, Function)
+
 
     def visitPrintStmt(self, ctx: compiscriptParser.PrintStmtContext):
         self.logger.debug("Visiting print statement")
@@ -337,7 +338,7 @@ class SemanticAnalyzer(compiscriptVisitor):
             self.logger.debug("Visiting parameters in function")
             function_symbol.parameters = self.visitParameters(ctx.parameters())
             self.in_return_ctx = True
-            self.scope_manager.update_symbol(identifier, function_symbol)
+            self.scope_manager.update_symbol(identifier, function_symbol, Function)
             self.logger.debug(f"Updated function '{identifier}' with parameters '{function_symbol.parameters}'")
         else:
             self.logger.debug("No parameters in function")

@@ -41,9 +41,8 @@ class Function(Object):
         return f'{self.object_type} returns {self.return_type}, params: ({params})'
 
 class Class(Object):
-    def __init__(self, name: str, methods: dict, attributes: dict):
+    def __init__(self, methods: dict, attributes: dict):
         super().__init__(ObjectType.CLASS)
-        self.name = name  # Name of the class
         self.methods = methods  # Dictionary to store class methods by name
         self.attributes = attributes  # Dictionary to store class attributes by name
     def __repr__(self):

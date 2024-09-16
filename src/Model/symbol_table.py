@@ -19,7 +19,6 @@ class Symbol:
             self.parameters = self.object_type.parameters       # Function's parameters
         
         elif isinstance(self.object_type, Class):
-            self.class_name = self.object_type.name             # Class name
             self.class_methods = self.object_type.methods       # Dictionary to store class methods by name
             self.class_attributes = self.object_type.attributes # Dictionary to store class attributes by name
 

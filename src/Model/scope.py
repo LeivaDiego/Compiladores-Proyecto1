@@ -79,7 +79,7 @@ class ScopeManager:
         return self.current_scope.get_symbol(name, object_type)
 
 
-    def update_symbol(self, name: str, symbol: Symbol):
+    def update_symbol(self, name: str, symbol: Symbol, object_type=None):
         """
         Updates a symbol in the current scope or any parent scope.
         If the symbol is not found in the current scope, it traverses up to the parent scopes
@@ -90,8 +90,12 @@ class ScopeManager:
         while scope:
             # If the symbol is found, update it and return
             if name in scope.symbol_table.symbols:
-                scope.symbol_table.symbols[name] = symbol
-                return
+                existing_symbol = scope.symbol_table.symbols[name]
+                # Check if the object type matches (if specified)
+                if object_type is None or isinstance(existing_symbol.object_type, object_type):
+                    scope.symbol_table.symbols[name] = symbol
+                    return
+                
             # Move to the parent scope
             scope = scope.parent
 
