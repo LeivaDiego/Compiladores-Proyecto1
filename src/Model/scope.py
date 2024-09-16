@@ -34,7 +34,7 @@ class Scope:
         return symbol
 
     def __repr__(self):
-        return f"Scope: {self.name}, Symbols: {self.symbol_table.symbols.keys()}"
+        return f"Scope: {self.name}, Level: {self.level}, Symbols: {self.symbol_table.symbols.keys()}"
 
 
 

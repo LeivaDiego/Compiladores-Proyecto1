@@ -1,10 +1,13 @@
 import os
 import logging
-from antlr4 import *
+from antlr4 import FileStream, CommonTokenStream
+from antlr4.error.Errors import ParseCancellationException
+from antlr4.error.ErrorStrategy import DefaultErrorStrategy
 from Model.parse_tree import TreeVisualizer
 from Language.compiscriptLexer import compiscriptLexer
 from Language.compiscriptParser import compiscriptParser
 from Controller.driver import SemanticAnalyzer
+from Controller.custom_exception import ThrowingErrorListener
 
 # Define the custom logging level SUCCESS (between INFO and WARNING)
 SUCCESS_LEVEL_NUM = 25
@@ -55,11 +58,29 @@ def main():
 
     # Create a lexer and parser for the input stream
     lexer = compiscriptLexer(input_stream)
+    lexer.removeErrorListeners()  # Remove the default error listener
+    lexer.addErrorListener(ThrowingErrorListener.INSTANCE)  # Add custom error listener
+
     stream = CommonTokenStream(lexer)
     parser = compiscriptParser(stream)
 
-    tree = parser.program()  # Start rule is 'program'
+    # Set BailErrorStrategy to stop parsing on first error
+    parser._errHandler = DefaultErrorStrategy()
+    # Remove default error listeners and add custom listener
+    parser.removeErrorListeners()
+    parser.addErrorListener(ThrowingErrorListener.INSTANCE)
 
+    # Try to parse the input file
+    try:
+        tree = parser.program()  # Start rule is 'program'
+        logger.success("Parsing completed: No syntax errors found.")
+    except ParseCancellationException as e:
+        logger.error(f"Syntax error: {str(e)}")
+        return
+    except Exception as e:
+        logger.error(f"An error occurred during parsing: {str(e)}")
+        return
+    
     # Create a parse tree visualizer and visit the parse tree
     # to generate a PNG file of the parse tree
     visualizer = TreeVisualizer(logger=logger)

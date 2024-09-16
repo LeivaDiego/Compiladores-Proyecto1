@@ -181,7 +181,7 @@ class SemanticAnalyzer(compiscriptVisitor):
                 raise Exception(f"Variable '{identifier}' is not declared in the current scope - {self.scope_manager.current_scope}")
             
             # Get the variable symbol from the symbol table
-            self.logger.debug(f"Found variable '{identifier}' in scope {variable_symbol.scope_level}")
+            self.logger.debug(f"Found variable '{identifier}' in scope {self.scope_manager.current_scope}")
             # Visit the expression to infer its type
             expression_type = self.visit(ctx.assignment())
 
