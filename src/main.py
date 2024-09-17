@@ -117,7 +117,7 @@ def run_compiler(file_path, is_debug=False, terminal_output=None):
         logger.error(f"Syntax error: {str(e)}")
         return None, f"Syntax error: {str(e)}"
     except Exception as e:
-        logger.error(f"An error occurred: {str(e)}")
+        logger.error(f"{str(e)}")
         return None, f"Error: {str(e)}"
 
 # Función principal que inicializa la GUI y se encarga de la compilación

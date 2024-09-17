@@ -1,0 +1,7 @@
+fun suma(a, b){
+  return a + b;
+}
+
+fun tester(){
+  print "Test";
+}
