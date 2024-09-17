@@ -1,232 +1,175 @@
 import tkinter as tk  
 from tkinter import scrolledtext, Menu, PanedWindow, Frame, filedialog, ttk, messagebox  
 import os
-import subprocess  
 from PIL import Image, ImageTk  
 
-# Crear la ventana principal
-root = tk.Tk()  
-root.title("Compilador (Construcción de Compiladores CC3032) - Editor de Código")  
-root.geometry("1000x600") 
+class CompilerGUI:
+    def __init__(self, root, run_code_callback):
+        self.root = root
+        self.run_code_callback = run_code_callback
+        self.current_file_path = None
 
-# Variable global para almacenar la ruta del archivo abierto
-current_file_path = None
+        # Crear un PanedWindow para permitir el cambio de tamaño entre el explorador, el editor de código y la consola
+        self.pane = PanedWindow(root, orient=tk.HORIZONTAL)
+        self.pane.pack(fill=tk.BOTH, expand=True)
 
-# Definir colores para los temas
-dark_gray = "#2E2E2E"  # Color gris oscuro para el tema oscuro
-light_gray = "#F0F0F0"  # Color gris claro para el tema claro
-light_text_color = "black"
-dark_text_color = "white"
+        # Crear el explorador de archivos
+        self.explorer_frame = Frame(self.pane)
+        self.pane.add(self.explorer_frame, width=200)
 
-# Configuración de estilos para Treeview
-style = ttk.Style()
-style.theme_use("default")
+        # Añadir un Treeview (árbol) para mostrar archivos y carpetas
+        self.file_tree = ttk.Treeview(self.explorer_frame)
+        self.file_tree.pack(fill=tk.BOTH, expand=True)
 
-# Función para cambiar el tema
-def set_theme(theme):
-    if theme == "claro":
-        root.config(bg="white")
-        code_editor.config(bg="white", fg=light_text_color, insertbackground=light_text_color)
-        terminal_frame.config(bg="white")
-        run_button.config(bg="lightgray", fg=light_text_color)
-        save_button.config(bg="lightgray", fg=light_text_color)
-        
-        # Cambiar estilo del Treeview
-        style.configure("Treeview", background="white", foreground=light_text_color, fieldbackground="white")
-        style.map('Treeview', background=[('selected', 'lightblue')])
-    elif theme == "oscuro":
-        root.config(bg=dark_gray)
-        code_editor.config(bg=dark_gray, fg=dark_text_color, insertbackground=dark_text_color)
-        terminal_frame.config(bg=dark_gray)
-        run_button.config(bg=dark_gray, fg=dark_text_color)
-        save_button.config(bg=dark_gray, fg=dark_text_color)
-        
-        # Cambiar estilo del Treeview
-        style.configure("Treeview", background=dark_gray, foreground=dark_text_color, fieldbackground=dark_gray)
-        style.map('Treeview', background=[('selected', 'darkblue')])
+        # Vincular la expansión del nodo con la función para cargar su contenido
+        self.file_tree.bind("<<TreeviewOpen>>", self.on_tree_expand)
 
-# Función para ejecutar el código cuando se presiona el botón "Compilar"
-def run_code():
-    code = code_editor.get("1.0", tk.END)  # Obtenemos todo el contenido del editor de código.
-    
-    # Guardar el código en un archivo temporal
-    with open("GUI/temp_code.py", "w") as f:
-        f.write(code)  # Escribimos el código en un archivo temporal llamado 'temp_code.py'.
-    
-    # Ejecutar el archivo y capturar la salida
-    process = subprocess.Popen(
-        ["python", "temp_code.py"],  # Ejecutamos el archivo temporal usando Python.
-        stdout=subprocess.PIPE,  
-        stderr=subprocess.PIPE,  
-        text=True  
-    )
-    output, error = process.communicate()  # Obtenemos la salida y el error de la ejecución.
-    
-    # Mostrar la salida en la "terminal" de la GUI
-    terminal_output.config(state=tk.NORMAL)  
-    terminal_output.delete("1.0", tk.END)  
-    terminal_output.insert(tk.END, output + error)  
-    terminal_output.config(state=tk.DISABLED)  
+        # Vincular la selección del archivo en el explorador con la apertura del archivo
+        self.file_tree.bind("<Double-1>", self.on_file_select)
 
-# Función para guardar el contenido del editor de código en el archivo actual
-def save_file():
-    global current_file_path
-    if current_file_path:
-        try:
-            with open(current_file_path, 'w', encoding='utf-8') as file:
-                code = code_editor.get("1.0", tk.END)
-                file.write(code)
-                messagebox.showinfo("Guardar", f"Archivo guardado exitosamente: {os.path.basename(current_file_path)}")
-        except Exception as e:
-            messagebox.showerror("Error", f"No se pudo guardar el archivo: {e}")
-    else:
-        messagebox.showerror("Error", "No hay ningún archivo abierto para guardar.")
+        # Crear otro PanedWindow para el editor de código y la consola
+        self.editor_console_pane = PanedWindow(self.pane, orient=tk.VERTICAL)
+        self.pane.add(self.editor_console_pane)
 
-# Función para abrir un archivo y mostrar su contenido en el editor de código
-def open_file(file_path=None):
-    global current_file_path
-    if not file_path:
-        file_path = filedialog.askopenfilename(
-            filetypes=[("Todos los archivos", "*.*")]
-        )
-    if file_path:
-        try:
-            with open(file_path, 'r', encoding='utf-8') as file:
-                code = file.read()
-                code_editor.delete("1.0", tk.END)  # Borra el contenido actual del editor
-                code_editor.insert(tk.END, code)  # Inserta el contenido del archivo
-                current_file_path = file_path  # Guarda la ruta del archivo abierto
-                root.title(f"Compilador - {os.path.basename(file_path)}")  # Actualiza el título con el nombre del archivo
-        except Exception as e:
-            terminal_output.config(state=tk.NORMAL)  
-            terminal_output.insert(tk.END, f"Error al abrir el archivo: {e}\n")  
-            terminal_output.config(state=tk.DISABLED)  
+        # Crear el editor de código (área de texto con scroll)
+        self.code_editor = scrolledtext.ScrolledText(self.editor_console_pane, undo=True, wrap=tk.WORD) 
+        self.editor_console_pane.add(self.code_editor, stretch="always")  
 
-# Función para abrir una carpeta y poblar el explorador de archivos
-def open_folder():
-    folder_path = filedialog.askdirectory()
-    if folder_path:
-        populate_file_explorer(folder_path, file_tree)
-        root.title(f"Compilador - {os.path.basename(folder_path)}")  # Actualiza el título con el nombre de la carpeta
+        # Crear un frame para los botones de acción
+        self.button_frame = Frame(self.editor_console_pane)
+        self.editor_console_pane.add(self.button_frame, stretch="never")
 
-# Función para poblar el explorador con archivos y carpetas
-def populate_file_explorer(path, tree):
-    tree.delete(*tree.get_children())
-    parent_node = tree.insert("", "end", text=path, open=True)
-    load_tree_nodes(parent_node, path)
+        # Crear un frame que contenga la terminal
+        self.terminal_frame = Frame(self.editor_console_pane)
+        self.editor_console_pane.add(self.terminal_frame, stretch="always")  
 
-# Función para cargar archivos y carpetas en un nodo
-def load_tree_nodes(parent_node, path):
-    # Primero eliminamos el nodo "dummy" si existe
-    if file_tree.get_children(parent_node):
-        file_tree.delete(*file_tree.get_children(parent_node))
+        # Crear la terminal (área de texto con scroll)
+        self.terminal_output = scrolledtext.ScrolledText(self.terminal_frame, height=10, state=tk.DISABLED, wrap=tk.WORD, bg="black", fg="white")  
+        self.terminal_output.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)  
 
-    for item in os.listdir(path):
-        abs_path = os.path.join(path, item)
-        node = file_tree.insert(parent_node, "end", text=item, open=False)
-        if os.path.isdir(abs_path):
-            # Añadir un nodo "dummy" para que la carpeta sea expansible
-            file_tree.insert(node, "end")
+        # Cargar la imagen de la flecha verde para el botón "Compilar"
+        image_path = "src/GUI/play_icon.png"  # Coloca aquí tu imagen de "play"
+        img = Image.open(image_path)
+        img = img.resize((20, 20), Image.LANCZOS)  
+        run_icon = ImageTk.PhotoImage(img)  
 
-# Función para manejar la expansión de un nodo (carpeta) y cargar su contenido
-def on_tree_expand(event):
-    node = file_tree.focus()
-    abs_path = get_node_path(node)
-    load_tree_nodes(node, abs_path)
+        # Crear el botón "Compilar"
+        run_button = tk.Button(self.button_frame, text="Compilar", image=run_icon, compound="right", command=lambda: self.run_code(is_debug=False))  
+        run_button.image = run_icon  # Para que la imagen no se recolecte como basura
+        run_button.pack(side=tk.LEFT, padx=10, pady=5)
 
-# Función para obtener la ruta absoluta de un nodo en el Treeview
-def get_node_path(node):
-    path = []
-    while node:
-        path.insert(0, file_tree.item(node, 'text'))
-        node = file_tree.parent(node)
-    return os.path.join(*path)
+        # Crear el botón "Debuguear"
+        debug_button = tk.Button(self.button_frame, text="Debuguear", command=lambda: self.run_code(is_debug=True))
+        debug_button.pack(side=tk.LEFT, padx=10, pady=5)
 
-# Función para manejar la selección de un archivo en el explorador
-def on_file_select(event):
-    selected_item = file_tree.focus()
-    file_path = get_node_path(selected_item)
-    
-    if os.path.isfile(file_path):
-        open_file(file_path)
+        # Crear el botón "Guardar"
+        save_button = tk.Button(self.button_frame, text="Guardar", command=self.save_file)  
+        save_button.pack(side=tk.LEFT, padx=10, pady=5)
 
-# Crear un PanedWindow para permitir el cambio de tamaño entre el explorador, el editor de código y la consola
-pane = PanedWindow(root, orient=tk.HORIZONTAL)
-pane.pack(fill=tk.BOTH, expand=True)
+        # Crear el menú en la barra de menú
+        self.menu_bar = Menu(root)
+        root.config(menu=self.menu_bar)
 
-# Crear el explorador de archivos
-explorer_frame = Frame(pane)
-pane.add(explorer_frame, width=200)
+        # Crear el submenú de "Archivo"
+        self.file_menu = Menu(self.menu_bar, tearoff=0)
+        self.menu_bar.add_cascade(label="Archivo", menu=self.file_menu)
+        self.file_menu.add_command(label="Abrir Archivo", command=self.open_file)
+        self.file_menu.add_command(label="Abrir Carpeta", command=self.open_folder)
 
-# Añadir un Treeview (árbol) para mostrar archivos y carpetas
-file_tree = ttk.Treeview(explorer_frame)
-file_tree.pack(fill=tk.BOTH, expand=True)
 
-# Inicialmente, el explorador estará vacío
-# file_tree estará vacío hasta que se seleccione una carpeta
+    # Función para ejecutar el código cuando se presiona el botón "Compilar" o "Debuguear"
+    def run_code(self, is_debug=False):
+        if self.current_file_path:
+            # Antes de ejecutar, vacía la terminal de la GUI y la configura para recibir nueva salida
+            self.terminal_output.config(state=tk.NORMAL)
+            self.terminal_output.delete("1.0", tk.END)
 
-# Vincular la expansión del nodo con la función para cargar su contenido
-file_tree.bind("<<TreeviewOpen>>", on_tree_expand)
+            # Ejecuta el proceso de compilación o debugueo y captura el output y errores
+            output, error = self.run_code_callback(self.current_file_path, is_debug, self.terminal_output)
 
-# Vincular la selección del archivo en el explorador con la apertura del archivo
-file_tree.bind("<Double-1>", on_file_select)
+            # Despliega el output (logs y mensajes de stdout/stderr) en la terminal de la GUI
+            if error:
+                self.terminal_output.insert(tk.END, error + "\n")  # Muestra el error
+            if output:
+                self.terminal_output.insert(tk.END, output + "\n")  # Muestra la salida exitosa
 
-# Crear otro PanedWindow para el editor de código y la consola
-editor_console_pane = PanedWindow(pane, orient=tk.VERTICAL)
-pane.add(editor_console_pane)
+            # Asegura que el scroll siempre siga la última línea del output
+            self.terminal_output.see(tk.END)
+            self.terminal_output.config(state=tk.DISABLED)  # Evita que el usuario edite la terminal
+        else:
+            # Si no hay archivo seleccionado, muestra un mensaje de error
+            messagebox.showerror("Error", "No hay ningún archivo abierto para compilar o debuguear.")
 
-# Crear el editor de código (área de texto con scroll)
-code_editor = scrolledtext.ScrolledText(editor_console_pane, undo=True, wrap=tk.WORD) 
-editor_console_pane.add(code_editor, stretch="always")  
 
-# Crear un frame para los botones de acción
-button_frame = Frame(editor_console_pane)
-editor_console_pane.add(button_frame, stretch="never")
+    # Función para guardar el contenido del editor de código en el archivo actual
+    def save_file(self):
+        if self.current_file_path:
+            try:
+                with open(self.current_file_path, 'w', encoding='utf-8') as file:
+                    code = self.code_editor.get("1.0", tk.END)
+                    file.write(code)
+                    messagebox.showinfo("Guardar", f"Archivo guardado exitosamente: {os.path.basename(self.current_file_path)}")
+            except Exception as e:
+                messagebox.showerror("Error", f"No se pudo guardar el archivo: {e}")
+        else:
+            messagebox.showerror("Error", "No hay ningún archivo abierto para guardar.")
 
-# Crear un frame que contenga los botones y la terminal
-terminal_frame = Frame(editor_console_pane)
-editor_console_pane.add(terminal_frame, stretch="always")  
+    # Función para abrir un archivo y mostrar su contenido en el editor de código
+    def open_file(self, file_path=None):
+        if not file_path:
+            file_path = filedialog.askopenfilename(filetypes=[("Todos los archivos", "*.*")])
+        if file_path:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as file:
+                    code = file.read()
+                    self.code_editor.delete("1.0", tk.END)
+                    self.code_editor.insert(tk.END, code)
+                    self.current_file_path = file_path
+                    self.root.title(f"Compilador - {os.path.basename(file_path)}")
+            except Exception as e:
+                self.terminal_output.config(state=tk.NORMAL)
+                self.terminal_output.insert(tk.END, f"Error al abrir el archivo: {e}\n")
+                self.terminal_output.config(state=tk.DISABLED)
 
-# Cargar la imagen de la flecha verde para el botón "Compilar"
-image_path = "src/GUI/image.png"  
-img = Image.open(image_path)
-img = img.resize((20, 20), Image.LANCZOS)  
-run_icon = ImageTk.PhotoImage(img)  
+    # Función para abrir una carpeta y poblar el explorador de archivos
+    def open_folder(self):
+        folder_path = filedialog.askdirectory()
+        if folder_path:
+            self.populate_file_explorer(folder_path)
 
-# Crear el botón "Compilar"
-run_button = tk.Button(button_frame, text="Compilar  ", image=run_icon, compound="right", command=run_code)  
-run_button.pack(side=tk.LEFT, padx=10, pady=5)
+    # Función para poblar el explorador con archivos y carpetas
+    def populate_file_explorer(self, path):
+        self.file_tree.delete(*self.file_tree.get_children())
+        parent_node = self.file_tree.insert("", "end", text=path, open=True)
+        self.load_tree_nodes(parent_node, path)
 
-# Crear el botón "Guardar"
-save_button = tk.Button(button_frame, text="Guardar", command=save_file)  
-save_button.pack(side=tk.LEFT, padx=10, pady=5)
+    # Función para cargar archivos y carpetas en un nodo
+    def load_tree_nodes(self, parent_node, path):
+        if self.file_tree.get_children(parent_node):
+            self.file_tree.delete(*self.file_tree.get_children(parent_node))
+        for item in os.listdir(path):
+            abs_path = os.path.join(path, item)
+            node = self.file_tree.insert(parent_node, "end", text=item, open=False)
+            if os.path.isdir(abs_path):
+                self.file_tree.insert(node, "end")
 
-# Crear la terminal (área de texto con scroll) para mostrar la salida del código dentro del frame de la terminal
-terminal_output = scrolledtext.ScrolledText(terminal_frame, height=10, state=tk.DISABLED, wrap=tk.WORD, bg="black", fg="white")  
-terminal_output.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)  
+    # Función para manejar la expansión de un nodo (carpeta) y cargar su contenido
+    def on_tree_expand(self, event):
+        node = self.file_tree.focus()
+        abs_path = self.get_node_path(node)
+        self.load_tree_nodes(node, abs_path)
 
-# Crear el menú en la barra de menú
-menu_bar = Menu(root)
-root.config(menu=menu_bar)
+    # Función para obtener la ruta absoluta de un nodo en el Treeview
+    def get_node_path(self, node):
+        path = []
+        while node:
+            path.insert(0, self.file_tree.item(node, 'text'))
+            node = self.file_tree.parent(node)
+        return os.path.join(*path)
 
-# Crear el submenú de "Archivo"
-file_menu = Menu(menu_bar, tearoff=0)
-menu_bar.add_cascade(label="Archivo", menu=file_menu)
-
-# Agregar la opción "Abrir Archivo" en el submenú "Archivo"
-file_menu.add_command(label="Abrir Archivo", command=open_file)
-
-# Agregar la opción "Abrir Carpeta" en el submenú "Archivo"
-file_menu.add_command(label="Abrir Carpeta", command=open_folder)
-
-# Crear el submenú de "Configuraciones"
-config_menu = Menu(menu_bar, tearoff=0)
-menu_bar.add_cascade(label="Configuraciones", menu=config_menu)
-
-# Agregar el submenú de temas dentro de "Configuraciones"
-theme_menu = Menu(config_menu, tearoff=0)
-config_menu.add_cascade(label="Tema", menu=theme_menu)
-theme_menu.add_command(label="Claro", command=lambda: set_theme("claro"))
-theme_menu.add_command(label="Oscuro", command=lambda: set_theme("oscuro"))
-
-root.mainloop()  # Inicia el loop principal de tkinter para que la ventana esté en funcionamiento.
+    # Función para manejar la selección de un archivo en el explorador
+    def on_file_select(self, event):
+        selected_item = self.file_tree.focus()
+        file_path = self.get_node_path(selected_item)
+        if os.path.isfile(file_path):
+            self.open_file(file_path)
